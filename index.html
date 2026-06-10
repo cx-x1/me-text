@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rentry Clone - Public JSON API</title>
+    <title>Rentry Clone - JSON API</title>
     
     <link href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.18/index.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     
     <style>
         body { font-family: 'Inter', sans-serif; background: #0d1117; color: #c9d1d9; }
@@ -18,7 +17,7 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         pre { white-space: pre-wrap; word-wrap: break-word; }
         textarea, input { background: #161b22 !important; color: #c9d1d9 !important; border-color: #30363d !important; }
-        textarea:focus, input:focus { border-color: #58a6ff !important; box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1) !important; }
+        textarea:focus, input:focus { border-color: #58a6ff !important; outline: none; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -26,18 +25,10 @@
     <nav class="bg-[#161b22] border-b border-[#30363d] sticky top-0 z-50">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
             <a href="#home" class="text-xl font-bold flex items-center gap-2 hover:text-[#58a6ff] transition">
-                <i class="fa-solid fa-paste text-[#58a6ff]"></i> RentryClone
+                <i class="fa-solid fa-paste text-[#58a6ff]"></i> PasteBin
             </a>
-            <div id="navLinks" class="flex gap-4 text-sm font-medium">
-                <a href="#home" class="text-gray-300 hover:text-white transition flex items-center gap-1">
-                    <i class="fa-solid fa-plus text-xs"></i> New
-                </a>
-                <a href="#dashboard" class="text-gray-300 hover:text-white transition flex items-center gap-1">
-                    <i class="fa-solid fa-list text-xs"></i> Dashboard
-                </a>
-                <button id="lockBtn" class="hidden text-gray-300 hover:text-white transition flex items-center gap-1" onclick="app.lock()">
-                    <i class="fa-solid fa-lock text-xs"></i> Lock
-                </button>
+            <div class="flex gap-4 text-sm font-medium">
+                <a href="#home" class="text-gray-300 hover:text-white transition">New Paste</a>
             </div>
         </div>
     </nav>
@@ -56,352 +47,35 @@
 
     <script>
     // ============================================
-    // RENTRY CLONE - GITHUB GIST BACKEND
-    // Data stored in GitHub Gists (not localStorage)
-    // Public JSON API works from ANY device
+    // PASTEBIN CLONE - DATA IN URL
+    // Works from any device - no backend needed
+    // Public JSON API via URL parameters
     // ============================================
     
-    // ⚠️ IMPORTANT: Replace with your GitHub Personal Access Token
-    // Get token from: https://github.com/settings/tokens
-    // Scopes needed: gist (Create gists)
-    const GITHUB_TOKEN = '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'; // 👈 PUT YOUR TOKEN HERE
-    const GITHUB_USERNAME = 'cx-x1'; // 👈 PUT YOUR USERNAME HERE
-    
     const app = {
-        masterKey: null,
-        isUnlocked: false,
-        
-        // ========================================
-        // GitHub Gist API
-        // ========================================
-        async createGist(filename, content, description = 'RentryClone Paste') {
+        // Base64 encode/decode (supports Unicode)
+        encode(str) {
             try {
-                const response = await fetch('https://api.github.com/gists', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/vnd.github.v3+json'
-                    },
-                    body: JSON.stringify({
-                        description: description,
-                        public: false, // Gists are unlisted but accessible via URL
-                        files: {
-                            [filename]: {
-                                content: content
-                            }
-                        }
-                    })
-                });
-                
-                if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.message || 'Failed to create gist');
-                }
-                
-                const gist = await response.json();
-                return {
-                    success: true,
-                    gistId: gist.id,
-                    rawUrl: gist.files[filename].raw_url,
-                    htmlUrl: gist.html_url,
-                    createdAt: gist.created_at
-                };
-            } catch (error) {
-                console.error('Gist creation error:', error);
-                return { success: false, error: error.message };
+                return btoa(unescape(encodeURIComponent(str)));
+            } catch(e) {
+                return btoa(str);
             }
         },
         
-        async updateGist(gistId, filename, content) {
+        decode(str) {
             try {
-                const response = await fetch(`https://api.github.com/gists/${gistId}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/vnd.github.v3+json'
-                    },
-                    body: JSON.stringify({
-                        files: {
-                            [filename]: {
-                                content: content
-                            }
-                        }
-                    })
-                });
-                
-                if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.message || 'Failed to update gist');
-                }
-                
-                const gist = await response.json();
-                return {
-                    success: true,
-                    rawUrl: gist.files[filename].raw_url
-                };
-            } catch (error) {
-                console.error('Gist update error:', error);
-                return { success: false, error: error.message };
+                return decodeURIComponent(escape(atob(str)));
+            } catch(e) {
+                return atob(str);
             }
         },
         
-        async deleteGist(gistId) {
-            try {
-                const response = await fetch(`https://api.github.com/gists/${gistId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
-                
-                if (!response.ok && response.status !== 204) {
-                    throw new Error('Failed to delete gist');
-                }
-                
-                return { success: true };
-            } catch (error) {
-                return { success: false, error: error.message };
-            }
+        // Compress content (removes unnecessary spaces for shorter URLs)
+        compress(content) {
+            return content;
         },
         
-        async getGist(gistId) {
-            try {
-                const response = await fetch(`https://api.github.com/gists/${gistId}`, {
-                    headers: {
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
-                
-                if (!response.ok) return null;
-                
-                const gist = await response.json();
-                const filename = Object.keys(gist.files)[0];
-                
-                return {
-                    gistId: gist.id,
-                    filename: filename,
-                    content: gist.files[filename].content,
-                    rawUrl: gist.files[filename].raw_url,
-                    createdAt: gist.created_at,
-                    updatedAt: gist.updated_at
-                };
-            } catch (error) {
-                return null;
-            }
-        },
-        
-        async getRawGistContent(rawUrl) {
-            try {
-                const response = await fetch(rawUrl);
-                if (!response.ok) return null;
-                return await response.text();
-            } catch (error) {
-                return null;
-            }
-        },
-        
-        // ========================================
-        // Encrypted Local Storage (for page index only)
-        // ========================================
-        encrypt(text, key) {
-            return CryptoJS.AES.encrypt(text, key).toString();
-        },
-        
-        decrypt(ciphertext, key) {
-            try {
-                const bytes = CryptoJS.AES.decrypt(ciphertext, key);
-                const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-                if (!decrypted) throw new Error('Decryption failed');
-                return decrypted;
-            } catch (e) {
-                return null;
-            }
-        },
-        
-        deriveKey(password) {
-            return CryptoJS.SHA256(password + "gist_rentry_salt_2024").toString();
-        },
-        
-        saveEncrypted(key, data) {
-            if (!this.masterKey) return false;
-            const encrypted = this.encrypt(JSON.stringify(data), this.masterKey);
-            localStorage.setItem('enc_' + key, encrypted);
-            return true;
-        },
-        
-        loadEncrypted(key) {
-            if (!this.masterKey) return null;
-            const encrypted = localStorage.getItem('enc_' + key);
-            if (!encrypted) return null;
-            try {
-                const decrypted = this.decrypt(encrypted, this.masterKey);
-                return decrypted ? JSON.parse(decrypted) : null;
-            } catch (e) {
-                return null;
-            }
-        },
-        
-        // ========================================
-        // Page Index (maps slug → gistId)
-        // ========================================
-        getPageIndex() {
-            return this.loadEncrypted('page_index') || {};
-        },
-        
-        savePageIndex(index) {
-            this.saveEncrypted('page_index', index);
-        },
-        
-        async createPage(slug, content) {
-            const index = this.getPageIndex();
-            
-            if (index[slug]) {
-                return { success: false, error: 'This slug already exists' };
-            }
-            
-            const filename = slug + '.txt';
-            const result = await this.createGist(filename, content, `RentryClone: ${slug}`);
-            
-            if (!result.success) {
-                return { success: false, error: result.error };
-            }
-            
-            // Save mapping
-            index[slug] = {
-                gistId: result.gistId,
-                rawUrl: result.rawUrl,
-                createdAt: result.createdAt
-            };
-            
-            this.savePageIndex(index);
-            
-            return {
-                success: true,
-                page: {
-                    slug: slug,
-                    content: content,
-                    gistId: result.gistId,
-                    rawUrl: result.rawUrl,
-                    createdAt: result.createdAt
-                }
-            };
-        },
-        
-        async updatePage(slug, content) {
-            const index = this.getPageIndex();
-            const pageInfo = index[slug];
-            
-            if (!pageInfo) {
-                return { success: false, error: 'Page not found' };
-            }
-            
-            const filename = slug + '.txt';
-            const result = await this.updateGist(pageInfo.gistId, filename, content);
-            
-            if (!result.success) {
-                return { success: false, error: result.error };
-            }
-            
-            index[slug].rawUrl = result.rawUrl;
-            index[slug].updatedAt = new Date().toISOString();
-            this.savePageIndex(index);
-            
-            return { success: true };
-        },
-        
-        async deletePage(slug) {
-            const index = this.getPageIndex();
-            const pageInfo = index[slug];
-            
-            if (!pageInfo) {
-                return { success: false, error: 'Page not found' };
-            }
-            
-            await this.deleteGist(pageInfo.gistId);
-            
-            delete index[slug];
-            this.savePageIndex(index);
-            
-            return { success: true };
-        },
-        
-        // ========================================
-        // Public API (Uses raw.githubusercontent.com)
-        // ========================================
-        getPublicJsonUrl(slug) {
-            const index = this.getPageIndex();
-            const pageInfo = index[slug];
-            if (!pageInfo) return null;
-            
-            // Direct raw URL that works from anywhere
-            return pageInfo.rawUrl;
-        },
-        
-        async getPageContent(slug) {
-            const index = this.getPageIndex();
-            const pageInfo = index[slug];
-            
-            if (!pageInfo) return null;
-            
-            // Fetch from raw URL (works from any device!)
-            const content = await this.getRawGistContent(pageInfo.rawUrl);
-            
-            if (content === null) return null;
-            
-            return {
-                slug: slug,
-                content: content,
-                gistId: pageInfo.gistId,
-                rawUrl: pageInfo.rawUrl,
-                createdAt: pageInfo.createdAt,
-                updatedAt: pageInfo.updatedAt
-            };
-        },
-        
-        // ========================================
-        // Auth
-        // ========================================
-        hasStoredPassword() {
-            return localStorage.getItem('pwd_hash') !== null;
-        },
-        
-        setupPassword(password) {
-            const hash = CryptoJS.SHA256(password).toString();
-            localStorage.setItem('pwd_hash', hash);
-            this.masterKey = this.deriveKey(password);
-            this.isUnlocked = true;
-            this.saveEncrypted('page_index', {});
-            this.showToast('Account created!', 'success');
-        },
-        
-        verifyPassword(password) {
-            const storedHash = localStorage.getItem('pwd_hash');
-            if (!storedHash) return false;
-            return CryptoJS.SHA256(password).toString() === storedHash;
-        },
-        
-        unlock(password) {
-            if (this.verifyPassword(password)) {
-                this.masterKey = this.deriveKey(password);
-                this.isUnlocked = true;
-                return true;
-            }
-            return false;
-        },
-        
-        lock() {
-            this.masterKey = null;
-            this.isUnlocked = false;
-            this.navigate('login');
-            this.showToast('Locked', 'success');
-        },
-        
-        // ========================================
-        // Toast
-        // ========================================
+        // Show toast
         showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             const icon = document.getElementById('toast-icon');
@@ -410,237 +84,307 @@
                 ? 'fa-solid fa-circle-xmark text-red-400' 
                 : 'fa-solid fa-circle-check text-green-400';
             toast.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3500);
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
         },
         
-        navigate(route) {
-            window.location.hash = '#' + route;
-        },
-        
-        updateNav() {
-            document.getElementById('lockBtn').classList.toggle('hidden', !this.isUnlocked);
-        },
-        
-        copyToClipboard(text) {
+        // Copy to clipboard
+        copy(text) {
             navigator.clipboard.writeText(text).then(() => {
                 this.showToast('Copied!', 'success');
             }).catch(() => prompt('Copy:', text));
         },
         
+        // Get current base URL
+        getBaseUrl() {
+            return window.location.origin + window.location.pathname;
+        },
+        
         // ========================================
-        // API Handler (Public - no login)
+        // Create a paste
         // ========================================
-        async handleApiRequest() {
+        createPaste(slug, content) {
+            // Store in localStorage for dashboard
+            const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
+            
+            // Remove old version if exists
+            const filtered = pastes.filter(p => p.slug !== slug);
+            
+            const paste = {
+                slug: slug,
+                encoded: this.encode(content),
+                created: new Date().toISOString()
+            };
+            
+            filtered.push(paste);
+            localStorage.setItem('my_pastes', JSON.stringify(filtered));
+            
+            return paste;
+        },
+        
+        // ========================================
+        // Get paste content from URL or localStorage
+        // ========================================
+        getPasteContent(slug) {
+            // First check URL parameter (data passed directly)
+            const params = new URLSearchParams(window.location.search);
+            const urlData = params.get('data');
+            
+            if (urlData) {
+                try {
+                    return this.decode(urlData);
+                } catch(e) {
+                    return null;
+                }
+            }
+            
+            // Then check localStorage
+            const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
+            const paste = pastes.find(p => p.slug === slug);
+            
+            if (paste) {
+                try {
+                    return this.decode(paste.encoded);
+                } catch(e) {
+                    return null;
+                }
+            }
+            
+            return null;
+        },
+        
+        // ========================================
+        // Generate URLs
+        // ========================================
+        getViewUrl(slug, content) {
+            const encoded = this.encode(content);
+            return `${this.getBaseUrl()}?view&slug=${slug}&data=${encodeURIComponent(encoded)}`;
+        },
+        
+        getJsonUrl(slug, content) {
+            const encoded = this.encode(content);
+            return `${this.getBaseUrl()}?api=json&slug=${slug}&data=${encodeURIComponent(encoded)}`;
+        },
+        
+        getRawUrl(slug, content) {
+            const encoded = this.encode(content);
+            return `${this.getBaseUrl()}?api=raw&slug=${slug}&data=${encodeURIComponent(encoded)}`;
+        },
+        
+        // ========================================
+        // API Handler (No login required!)
+        // ========================================
+        handleApi() {
             const params = new URLSearchParams(window.location.search);
             const api = params.get('api');
             const slug = params.get('slug');
+            const data = params.get('data');
             
-            if (!api || !slug) return false;
-            
-            if (api === 'json') {
-                const pageData = await this.getPageContent(slug);
-                
-                if (!pageData) {
-                    this.outputJson({ error: 'Paste not found', slug: slug }, 404);
-                    return true;
-                }
-                
-                this.outputJson({
-                    slug: pageData.slug,
-                    content: pageData.content,
-                    created_at: pageData.createdAt,
-                    updated_at: pageData.updatedAt || pageData.createdAt,
-                    raw_url: pageData.rawUrl,
-                    gist_url: `https://gist.github.com/${GITHUB_USERNAME}/${pageData.gistId}`
-                });
-                return true;
+            // If it's a view request
+            if (params.get('view') !== null && slug && data) {
+                return false; // Let the app render it
             }
             
-            if (api === 'raw') {
-                const pageData = await this.getPageContent(slug);
-                
-                if (!pageData) {
-                    this.outputJson({ error: 'Paste not found', slug: slug }, 404);
+            if (api === 'json' && slug && data) {
+                try {
+                    const content = this.decode(decodeURIComponent(data));
+                    
+                    document.body.innerHTML = '';
+                    document.head.innerHTML = '';
+                    document.title = slug + ' - JSON API';
+                    
+                    const response = {
+                        slug: slug,
+                        content: content,
+                        timestamp: new Date().toISOString(),
+                        url: this.getJsonUrl(slug, content)
+                    };
+                    
+                    const pre = document.createElement('pre');
+                    pre.style.cssText = 'font-family:monospace;padding:20px;background:#0d1117;color:#58a6ff;min-height:100vh;margin:0;font-size:14px;line-height:1.6;';
+                    pre.textContent = JSON.stringify(response, null, 2);
+                    document.body.appendChild(pre);
+                    return true;
+                } catch(e) {
+                    document.body.innerHTML = '<pre style="color:red;padding:20px;">Error decoding data</pre>';
                     return true;
                 }
-                
-                document.body.innerHTML = `<pre style="font-family:monospace;padding:20px;background:#0d1117;color:#c9d1d9;min-height:100vh;margin:0;white-space:pre-wrap;">${pageData.content}</pre>`;
-                document.head.innerHTML = '';
-                return true;
             }
             
-            this.outputJson({ error: 'Use ?api=json&slug=NAME or ?api=raw&slug=NAME' }, 400);
-            return true;
-        },
-        
-        outputJson(data, code = 200) {
-            document.body.innerHTML = '';
-            document.head.innerHTML = '';
-            const pre = document.createElement('pre');
-            pre.style.cssText = 'font-family:monospace;padding:20px;background:#0d1117;color:#c9d1d9;min-height:100vh;margin:0;font-size:14px;line-height:1.6;';
-            pre.textContent = JSON.stringify(data, null, 2);
-            document.body.appendChild(pre);
+            if (api === 'raw' && slug && data) {
+                try {
+                    const content = this.decode(decodeURIComponent(data));
+                    document.body.innerHTML = '';
+                    document.head.innerHTML = '';
+                    const pre = document.createElement('pre');
+                    pre.style.cssText = 'font-family:monospace;padding:20px;background:#0d1117;color:#c9d1d9;min-height:100vh;margin:0;white-space:pre-wrap;font-size:14px;';
+                    pre.textContent = content;
+                    document.body.appendChild(pre);
+                    return true;
+                } catch(e) {
+                    document.body.innerHTML = '<pre style="color:red;padding:20px;">Error decoding data</pre>';
+                    return true;
+                }
+            }
+            
+            return false;
         },
         
         // ========================================
-        // Renderers
+        // Render: Home Page (Create Paste)
         // ========================================
-        renderLogin(container) {
-            const hasPassword = this.hasStoredPassword();
-            
-            container.innerHTML = `
-                <div class="max-w-md mx-auto bg-[#161b22] p-8 rounded-xl border border-[#30363d] mt-10">
-                    <div class="text-center mb-6">
-                        <div class="bg-[#1f6feb]/20 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-[#1f6feb]/50">
-                            <i class="fa-solid fa-paste text-3xl text-[#58a6ff]"></i>
-                        </div>
-                        <h2 class="text-2xl font-bold text-white">${hasPassword ? 'Unlock' : 'Create Account'}</h2>
-                        <p class="text-gray-400 mt-2 text-sm">${hasPassword ? 'Enter your password' : 'Create a password (cannot be recovered!)'}</p>
-                    </div>
-                    <form id="passwordForm" class="space-y-4">
-                        <input type="password" id="password" required minlength="${hasPassword ? '1' : '8'}" 
-                            class="block w-full px-4 py-3 rounded-md" 
-                            placeholder="${hasPassword ? 'Password' : 'Create password (min 8 chars)'}">
-                        ${!hasPassword ? `<input type="password" id="confirmPassword" required minlength="8" class="block w-full px-4 py-3 rounded-md" placeholder="Confirm password">` : ''}
-                        <button type="submit" class="w-full bg-[#238636] text-white py-3 rounded-md hover:bg-[#2ea043] transition font-bold text-lg">
-                            ${hasPassword ? 'Unlock' : 'Create Account'}
-                        </button>
-                        ${hasPassword ? `<button type="button" id="resetBtn" class="w-full bg-[#da3633]/20 text-[#f85149] py-3 rounded-md hover:bg-[#da3633]/30 transition font-bold border border-[#da3633]/30 text-sm">Reset All Data</button>` : ''}
-                    </form>
-                </div>
-            `;
-            
-            document.getElementById('passwordForm').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const password = document.getElementById('password').value;
-                if (!hasPassword) {
-                    if (password !== document.getElementById('confirmPassword').value) return this.showToast('Passwords do not match', 'error');
-                    if (password.length < 8) return this.showToast('Min 8 characters', 'error');
-                    this.setupPassword(password);
-                    this.navigate('home');
-                } else {
-                    if (this.unlock(password)) { this.showToast('Unlocked!', 'success'); this.navigate('dashboard'); }
-                    else this.showToast('Wrong password', 'error');
-                }
-            });
-            
-            if (hasPassword) {
-                document.getElementById('resetBtn').addEventListener('click', () => {
-                    if (confirm('Delete all data? This cannot be undone!') && confirm('Final warning!')) {
-                        localStorage.clear();
-                        this.isUnlocked = false;
-                        this.masterKey = null;
-                        this.showToast('All data deleted', 'success');
-                        this.renderLogin(container);
-                    }
-                });
-            }
-        },
-        
         renderHome(container) {
-            if (!this.isUnlocked) { this.navigate('login'); return; }
-            
             container.innerHTML = `
                 <div class="max-w-3xl mx-auto bg-[#161b22] p-8 rounded-xl border border-[#30363d]">
-                    <h2 class="text-2xl font-bold mb-2 text-white"><i class="fa-solid fa-file-circle-plus text-[#58a6ff]"></i> New Paste</h2>
-                    <p class="text-gray-400 text-sm mb-6">Creates a GitHub Gist with public JSON API</p>
+                    <h2 class="text-2xl font-bold mb-2 text-white">
+                        <i class="fa-solid fa-file-circle-plus text-[#58a6ff]"></i> Create New Paste
+                    </h2>
+                    <p class="text-gray-400 text-sm mb-6">
+                        Each paste gets a public URL and JSON API that works from <strong>any device</strong>
+                    </p>
+                    
                     <form id="createForm" class="space-y-5">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-300 mb-1">Slug</label>
+                            <label class="block text-sm font-semibold text-gray-300 mb-1">Slug (URL Name)</label>
                             <div class="flex">
-                                <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-[#30363d] bg-[#0d1117] text-gray-400 text-sm">/</span>
-                                <input type="text" id="slug" required pattern="[a-zA-Z0-9_-]+" class="flex-1 px-4 py-3 rounded-r-md font-mono" placeholder="my-paste">
+                                <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-[#30363d] bg-[#0d1117] text-gray-400 text-sm font-mono">/</span>
+                                <input type="text" id="slug" required pattern="[a-zA-Z0-9_-]+" 
+                                    class="flex-1 block w-full px-4 py-3 rounded-r-md font-mono" 
+                                    placeholder="my-config-file">
                             </div>
+                            <p class="text-xs text-gray-500 mt-1">Letters, numbers, hyphens, underscores (3-50 characters)</p>
                         </div>
+                        
                         <div>
                             <label class="block text-sm font-semibold text-gray-300 mb-1">Content</label>
-                            <textarea id="content" required rows="16" class="block w-full px-4 py-3 rounded-md text-sm" placeholder="Paste content here...&#10;&#10;This will be available via JSON API from any device"></textarea>
+                            <textarea id="content" required rows="14" 
+                                class="block w-full px-4 py-3 rounded-md text-sm font-mono" 
+                                placeholder="Paste your content here...&#10;&#10;This will be available via JSON API from anywhere!"></textarea>
                         </div>
-                        <button type="submit" class="w-full bg-[#238636] text-white py-3 rounded-md hover:bg-[#2ea043] transition font-bold text-lg">Create Paste</button>
+                        
+                        <button type="submit" class="w-full bg-[#238636] text-white py-3 px-4 rounded-md hover:bg-[#2ea043] transition font-bold text-lg flex justify-center items-center gap-2">
+                            <i class="fa-solid fa-paper-plane"></i> Create Paste
+                        </button>
                     </form>
                 </div>
             `;
             
-            document.getElementById('createForm').addEventListener('submit', async (e) => {
+            document.getElementById('createForm').addEventListener('submit', (e) => {
                 e.preventDefault();
                 const slug = document.getElementById('slug').value.trim().toLowerCase();
                 const content = document.getElementById('content').value;
                 
                 if (!/^[a-zA-Z0-9_-]{3,50}$/.test(slug)) {
-                    return this.showToast('Invalid slug (3-50 chars, letters/numbers/hyphens)', 'error');
+                    this.showToast('Invalid slug: 3-50 characters, letters/numbers/hyphens/underscores only', 'error');
+                    return;
                 }
                 
-                document.querySelector('button[type="submit"]').disabled = true;
-                document.querySelector('button[type="submit"]').innerHTML = '<span class="spinner"></span> Creating...';
+                // Create the paste
+                const paste = this.createPaste(slug, content);
                 
-                const result = await this.createPage(slug, content);
-                
-                if (result.success) {
-                    this.showToast('Paste created! JSON API ready', 'success');
-                    window.location.hash = '#view/' + slug;
-                } else {
-                    this.showToast(result.error, 'error');
-                    document.querySelector('button[type="submit"]').disabled = false;
-                    document.querySelector('button[type="submit"]').innerHTML = 'Create Paste';
-                }
+                // Redirect to view page
+                const viewUrl = this.getViewUrl(slug, content);
+                window.location.href = viewUrl;
             });
         },
         
-        async renderPublicView(container, slug) {
-            container.innerHTML = `<div class="text-center py-20"><div class="spinner"></div><p class="mt-4 text-gray-500">Loading paste...</p></div>`;
+        // ========================================
+        // Render: View Paste (Public)
+        // ========================================
+        renderView(container) {
+            const params = new URLSearchParams(window.location.search);
+            const slug = params.get('slug');
+            const data = params.get('data');
             
-            const pageData = await this.getPageContent(slug);
-            
-            if (!pageData) {
+            if (!slug || !data) {
                 container.innerHTML = `
                     <div class="max-w-2xl mx-auto text-center py-20">
-                        <i class="fa-solid fa-file-circle-question text-7xl text-gray-600 mb-6"></i>
-                        <h2 class="text-3xl font-bold text-gray-300 mb-3">Not Found</h2>
-                        <p class="text-gray-500">Paste <code class="text-[#58a6ff]">/${slug}</code> doesn't exist</p>
-                        <a href="#home" class="inline-block mt-4 text-[#58a6ff] font-bold">Create New</a>
+                        <i class="fa-solid fa-circle-question text-7xl text-gray-600 mb-4"></i>
+                        <h2 class="text-2xl text-gray-300">No paste specified</h2>
+                        <a href="${this.getBaseUrl()}" class="text-[#58a6ff] mt-4 inline-block font-bold">Create New</a>
                     </div>`;
                 return;
             }
             
-            const jsonUrl = `${window.location.origin}${window.location.pathname}?api=json&slug=${slug}`;
-            const rawUrl = `${window.location.origin}${window.location.pathname}?api=raw&slug=${slug}`;
+            let content;
+            try {
+                content = this.decode(decodeURIComponent(data));
+            } catch(e) {
+                container.innerHTML = `<div class="text-center py-20 text-red-400">Error: Invalid data</div>`;
+                return;
+            }
+            
+            const jsonUrl = this.getJsonUrl(slug, content);
+            const rawUrl = this.getRawUrl(slug, content);
+            const viewUrl = this.getViewUrl(slug, content);
             
             container.innerHTML = `
                 <div class="max-w-4xl mx-auto">
+                    <!-- Content Card -->
                     <div class="bg-[#161b22] rounded-xl border border-[#30363d] mb-6">
                         <div class="p-5 border-b border-[#30363d] flex justify-between items-center flex-wrap gap-3">
                             <div>
-                                <h1 class="text-xl font-bold font-mono text-[#58a6ff]">/${pageData.slug}</h1>
-                                <p class="text-xs text-gray-500 mt-1">Created: ${new Date(pageData.createdAt).toLocaleString()}</p>
+                                <h1 class="text-xl font-bold font-mono text-[#58a6ff]">
+                                    <i class="fa-solid fa-file-code"></i> /${slug}
+                                </h1>
                             </div>
                             <div class="flex gap-2">
-                                <button onclick="app.copyToClipboard('${jsonUrl}')" class="bg-[#1f6feb] text-white px-4 py-2 rounded-lg hover:bg-[#1f6feb]/80 transition font-bold text-sm">JSON API</button>
-                                <button onclick="app.copyToClipboard('${rawUrl}')" class="bg-[#30363d] text-white px-4 py-2 rounded-lg hover:bg-[#30363d]/80 transition font-bold text-sm">Raw</button>
+                                <button onclick="app.copy('${jsonUrl}')" 
+                                    class="bg-[#1f6feb] text-white px-4 py-2 rounded-lg hover:bg-[#1f6feb]/80 transition font-bold text-sm">
+                                    <i class="fa-solid fa-code"></i> Copy JSON URL
+                                </button>
+                                <button onclick="app.copy('${rawUrl}')" 
+                                    class="bg-[#30363d] text-white px-4 py-2 rounded-lg hover:bg-[#30363d]/80 transition font-bold text-sm">
+                                    <i class="fa-solid fa-file-lines"></i> Copy Raw URL
+                                </button>
                             </div>
                         </div>
                         <div class="p-6">
-                            <pre class="text-sm bg-[#0d1117] p-5 rounded-lg leading-relaxed border border-[#30363d] overflow-x-auto text-gray-200">${pageData.content}</pre>
+                            <pre class="text-sm bg-[#0d1117] p-5 rounded-lg leading-relaxed border border-[#30363d] overflow-x-auto text-gray-200 font-mono">${content}</pre>
                         </div>
                     </div>
                     
+                    <!-- API Info -->
                     <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-6">
-                        <h3 class="font-bold text-lg text-white mb-4"><i class="fa-solid fa-plug text-[#58a6ff]"></i> API Access (Works from ANY device)</h3>
-                        <div class="space-y-3">
+                        <h3 class="font-bold text-lg text-white mb-4">
+                            <i class="fa-solid fa-plug text-[#58a6ff]"></i> API Access (Works from Anywhere!)
+                        </h3>
+                        
+                        <div class="space-y-4">
                             <div class="bg-[#0d1117] rounded-lg p-4 border border-[#30363d]">
-                                <p class="text-xs text-gray-400 mb-2">JSON Endpoint:</p>
-                                <code class="text-xs text-green-400 break-all">${jsonUrl}</code>
+                                <p class="text-xs text-gray-400 mb-2 font-semibold">📦 JSON API (with metadata):</p>
+                                <div class="flex items-center gap-2">
+                                    <code class="flex-1 text-xs text-green-400 break-all font-mono bg-[#161b22] p-2 rounded">${jsonUrl}</code>
+                                    <button onclick="app.copy('${jsonUrl}')" class="text-gray-400 hover:text-white p-2" title="Copy">
+                                        <i class="fa-solid fa-copy"></i>
+                                    </button>
+                                </div>
                             </div>
+                            
                             <div class="bg-[#0d1117] rounded-lg p-4 border border-[#30363d]">
-                                <p class="text-xs text-gray-400 mb-2">Raw Text:</p>
-                                <code class="text-xs text-yellow-400 break-all">${rawUrl}</code>
+                                <p class="text-xs text-gray-400 mb-2 font-semibold">📄 Raw Content (plain text):</p>
+                                <div class="flex items-center gap-2">
+                                    <code class="flex-1 text-xs text-yellow-400 break-all font-mono bg-[#161b22] p-2 rounded">${rawUrl}</code>
+                                    <button onclick="app.copy('${rawUrl}')" class="text-gray-400 hover:text-white p-2" title="Copy">
+                                        <i class="fa-solid fa-copy"></i>
+                                    </button>
+                                </div>
                             </div>
+                            
                             <div class="bg-[#0d1117] rounded-lg p-4 border border-[#30363d]">
-                                <p class="text-xs text-gray-400 mb-2">cURL Example:</p>
-                                <pre class="text-xs text-green-400 overflow-x-auto"><code>curl "${jsonUrl}"</code></pre>
-                            </div>
-                            <div class="bg-[#0d1117] rounded-lg p-4 border border-[#30363d]">
-                                <p class="text-xs text-gray-400 mb-2">JavaScript:</p>
-                                <pre class="text-xs text-green-400 overflow-x-auto"><code>fetch("${jsonUrl}").then(r=>r.json()).then(d=>console.log(d.content))</code></pre>
+                                <p class="text-xs text-gray-400 mb-3 font-semibold">💡 Usage Examples:</p>
+                                
+                                <p class="text-xs text-gray-500 mb-1">cURL:</p>
+                                <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto mb-3"><code>curl "${jsonUrl}"</code></pre>
+                                
+                                <p class="text-xs text-gray-500 mb-1">JavaScript:</p>
+                                <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto mb-3"><code>fetch("${jsonUrl}")
+  .then(r => r.json())
+  .then(d => console.log(d.content));</code></pre>
+                                
+                                <p class="text-xs text-gray-500 mb-1">Python:</p>
+                                <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto"><code>import requests
+r = requests.get("${jsonUrl}")
+print(r.json()["content"])</code></pre>
                             </div>
                         </div>
                     </div>
@@ -648,92 +392,135 @@
             `;
         },
         
+        // ========================================
+        // Render: My Pastes (Dashboard)
+        // ========================================
         renderDashboard(container) {
-            if (!this.isUnlocked) { this.navigate('login'); return; }
-            
-            const index = this.getPageIndex();
-            const pages = Object.entries(index).map(([slug, info]) => ({ slug, ...info }));
+            const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
             
             container.innerHTML = `
                 <div class="max-w-6xl mx-auto">
                     <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold text-white"><i class="fa-solid fa-list text-[#58a6ff]"></i> My Pastes <span class="text-sm text-gray-400 bg-[#161b22] px-3 py-1 rounded-full">${pages.length}</span></h2>
-                        <a href="#home" class="bg-[#238636] text-white px-5 py-3 rounded-lg hover:bg-[#2ea043] transition font-bold text-sm">New</a>
+                        <h2 class="text-2xl font-bold text-white">
+                            <i class="fa-solid fa-list text-[#58a6ff]"></i> My Pastes
+                            <span class="text-sm text-gray-400 bg-[#161b22] px-3 py-1 rounded-full ml-2 border border-[#30363d]">${pastes.length}</span>
+                        </h2>
+                        <a href="${this.getBaseUrl()}" class="bg-[#238636] text-white px-5 py-3 rounded-lg hover:bg-[#2ea043] transition font-bold text-sm">
+                            <i class="fa-solid fa-plus"></i> New Paste
+                        </a>
                     </div>
+                    
                     <div class="bg-[#161b22] rounded-xl border border-[#30363d] overflow-hidden">
-                        ${pages.length === 0 ? `
+                        ${pastes.length === 0 ? `
                             <div class="text-center py-16">
                                 <i class="fa-solid fa-paste text-6xl text-gray-600 mb-4"></i>
-                                <h3 class="text-xl text-gray-400 mb-2">No pastes yet</h3>
-                                <a href="#home" class="bg-[#238636] text-white px-6 py-3 rounded-lg inline-block font-bold">Create First Paste</a>
+                                <h3 class="text-xl font-bold text-gray-400 mb-2">No Pastes Yet</h3>
+                                <p class="text-gray-500 mb-6">Create your first paste to share</p>
+                                <a href="${this.getBaseUrl()}" class="bg-[#238636] text-white px-6 py-3 rounded-lg hover:bg-[#2ea043] transition font-bold inline-block">
+                                    <i class="fa-solid fa-plus"></i> Create Paste
+                                </a>
                             </div>
                         ` : `
                             <table class="w-full">
-                                <thead><tr class="bg-[#0d1117] border-b-2 border-[#30363d]">
-                                    <th class="py-4 px-6 text-left text-sm font-bold text-gray-400">Slug</th>
-                                    <th class="py-4 px-6 text-left text-sm font-bold text-gray-400">API</th>
-                                    <th class="py-4 px-6 text-left text-sm font-bold text-gray-400">Created</th>
-                                    <th class="py-4 px-6 text-left text-sm font-bold text-gray-400">Actions</th>
-                                </tr></thead>
+                                <thead>
+                                    <tr class="bg-[#0d1117] border-b-2 border-[#30363d]">
+                                        <th class="py-4 px-6 text-left text-sm font-bold text-gray-400">Slug</th>
+                                        <th class="py-4 px-6 text-left text-sm font-bold text-gray-400">Created</th>
+                                        <th class="py-4 px-6 text-left text-sm font-bold text-gray-400">Actions</th>
+                                    </tr>
+                                </thead>
                                 <tbody class="divide-y divide-[#30363d]">
-                                    ${pages.map(p => `
-                                        <tr class="hover:bg-[#1c2128]">
-                                            <td class="py-4 px-6 font-mono text-sm text-[#58a6ff]">/${p.slug}</td>
-                                            <td class="py-4 px-6">
-                                                <button onclick="app.copyToClipboard('${window.location.origin}${window.location.pathname}?api=json&slug=${p.slug}')" class="text-xs bg-[#21262d] text-green-400 px-3 py-1 rounded hover:bg-[#30363d] font-mono">JSON</button>
+                                    ${pastes.reverse().map(p => {
+                                        let content;
+                                        try { content = app.decode(p.encoded); } catch(e) { content = ''; }
+                                        const viewUrl = app.getViewUrl(p.slug, content);
+                                        const jsonUrl = app.getJsonUrl(p.slug, content);
+                                        const rawUrl = app.getRawUrl(p.slug, content);
+                                        
+                                        return `
+                                        <tr class="hover:bg-[#1c2128] transition">
+                                            <td class="py-4 px-6 font-mono text-sm text-[#58a6ff] font-bold">
+                                                /${p.slug}
                                             </td>
-                                            <td class="py-4 px-6 text-sm text-gray-400">${new Date(p.createdAt).toLocaleDateString()}</td>
+                                            <td class="py-4 px-6 text-sm text-gray-400">
+                                                ${new Date(p.created).toLocaleDateString()}
+                                            </td>
                                             <td class="py-4 px-6">
-                                                <div class="flex gap-1">
-                                                    <button onclick="window.location.hash='#view/${p.slug}'" class="text-blue-400 hover:bg-[#21262d] p-2 rounded">👁</button>
-                                                    <button onclick="app.copyToClipboard('${window.location.origin}${window.location.pathname}?api=json&slug=${p.slug}')" class="text-green-400 hover:bg-[#21262d] p-2 rounded">🔗</button>
-                                                    <button onclick="app.deletePageConfirm('${p.slug}', '${p.gistId}')" class="text-red-400 hover:bg-[#21262d] p-2 rounded">🗑</button>
+                                                <div class="flex gap-1 flex-wrap">
+                                                    <a href="${viewUrl}" target="_blank" 
+                                                        class="text-blue-400 hover:bg-[#21262d] px-2 py-1 rounded text-xs font-bold transition">
+                                                        <i class="fa-solid fa-eye"></i> View
+                                                    </a>
+                                                    <button onclick="app.copy('${jsonUrl}')" 
+                                                        class="text-green-400 hover:bg-[#21262d] px-2 py-1 rounded text-xs font-bold transition">
+                                                        <i class="fa-solid fa-code"></i> JSON
+                                                    </button>
+                                                    <button onclick="app.copy('${rawUrl}')" 
+                                                        class="text-yellow-400 hover:bg-[#21262d] px-2 py-1 rounded text-xs font-bold transition">
+                                                        <i class="fa-solid fa-file"></i> Raw
+                                                    </button>
+                                                    <button onclick="app.deletePaste('${p.slug}')" 
+                                                        class="text-red-400 hover:bg-[#21262d] px-2 py-1 rounded text-xs font-bold transition">
+                                                        <i class="fa-solid fa-trash"></i> Del
+                                                    </button>
                                                 </div>
                                             </td>
-                                        </tr>
-                                    `).join('')}
+                                        </tr>`;
+                                    }).join('')}
                                 </tbody>
                             </table>
                         `}
+                    </div>
+                    
+                    <div class="mt-4 text-xs text-gray-500 text-center">
+                        <i class="fa-solid fa-info-circle"></i> 
+                        Pastes are stored locally. URLs contain all data and work from any device.
+                        <br>Bookmark or share the URLs to keep access.
                     </div>
                 </div>
             `;
         },
         
-        async deletePageConfirm(slug, gistId) {
-            if (confirm(`Delete "/${slug}"? This also deletes the GitHub Gist.`)) {
-                await this.deleteGist(gistId);
-                const index = this.getPageIndex();
-                delete index[slug];
-                this.savePageIndex(index);
+        // Delete paste
+        deletePaste(slug) {
+            if (confirm(`Delete paste "/${slug}"?`)) {
+                const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
+                const filtered = pastes.filter(p => p.slug !== slug);
+                localStorage.setItem('my_pastes', JSON.stringify(filtered));
                 this.showToast('Deleted!', 'success');
                 this.renderDashboard(document.getElementById('app'));
             }
         },
         
-        async handleRouting() {
-            const hash = window.location.hash || '#home';
+        // ========================================
+        // Router
+        // ========================================
+        route() {
+            const params = new URLSearchParams(window.location.search);
             const main = document.getElementById('app');
-            this.updateNav();
-            main.innerHTML = ''; main.classList.remove('fade-in'); void main.offsetWidth; main.classList.add('fade-in');
             
-            if (hash === '#login') this.renderLogin(main);
-            else if (hash.startsWith('#view/')) await this.renderPublicView(main, hash.replace('#view/', ''));
-            else if (!this.isUnlocked) this.navigate('login');
-            else if (hash === '#home') this.renderHome(main);
-            else if (hash === '#dashboard') this.renderDashboard(main);
-            else this.renderHome(main);
+            // API requests handled first
+            if (this.handleApi()) return;
+            
+            main.innerHTML = '';
+            main.classList.remove('fade-in');
+            void main.offsetWidth;
+            main.classList.add('fade-in');
+            
+            const hash = window.location.hash;
+            
+            if (params.get('view') !== null) {
+                this.renderView(main);
+            } else if (hash === '#dashboard') {
+                this.renderDashboard(main);
+            } else {
+                this.renderHome(main);
+            }
         },
         
-        async init() {
-            if (await this.handleApiRequest()) return;
-            window.addEventListener('hashchange', () => this.handleRouting());
-            if (this.hasStoredPassword()) {
-                if (!window.location.hash || window.location.hash === '#') window.location.hash = '#home';
-            } else {
-                window.location.hash = '#login';
-            }
-            await this.handleRouting();
+        init() {
+            this.route();
+            window.addEventListener('hashchange', () => this.route());
         }
     };
 
