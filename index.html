@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Rentry - Encrypted Notes</title>
+    <title>Rentry Clone - Paste & Share</title>
     
     <!-- Fonts -->
     <link href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.18/index.css" rel="stylesheet">
@@ -11,10 +11,10 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Font Awesome Icons -->
+    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- CryptoJS for AES Encryption -->
+    <!-- CryptoJS for Encryption -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     
     <script>
@@ -23,6 +23,7 @@
                 extend: {
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
+                        mono: ['Courier New', 'monospace'],
                     }
                 }
             }
@@ -30,99 +31,76 @@
     </script>
     
     <style>
-        body { 
-            font-family: 'Inter', sans-serif; 
-        }
-        .fade-in { 
-            animation: fadeIn 0.3s ease-in-out; 
-        }
-        @keyframes fadeIn { 
-            from { opacity: 0; transform: translateY(10px); } 
-            to { opacity: 1; transform: translateY(0); } 
-        }
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .spinner {
-            display: inline-block;
-            width: 20px; 
-            height: 20px; 
-            border: 3px solid rgba(255,255,255,.3); 
-            border-radius: 50%; 
-            border-top-color: #fff; 
-            animation: spin 1s ease-in-out infinite;
+            display: inline-block; width: 20px; height: 20px;
+            border: 3px solid rgba(255,255,255,.3); border-radius: 50%;
+            border-top-color: #fff; animation: spin 1s ease-in-out infinite;
         }
-        @keyframes spin { 
-            to { transform: rotate(360deg); } 
-        }
-        pre {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        .json-key { color: #0066cc; }
-        .json-string { color: #008000; }
-        .json-number { color: #cc6600; }
-        .json-boolean { color: #cc0066; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+        .content-area { font-family: 'Courier New', monospace; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
     
-    <!-- ========== Navigation Bar ========== -->
-    <nav class="bg-indigo-600 text-white shadow-lg sticky top-0 z-50">
+    <!-- ========== Navigation ========== -->
+    <nav class="bg-gray-800 border-b border-gray-700 sticky top-0 z-50">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <a href="#home" class="text-2xl font-bold flex items-center gap-2 hover:text-indigo-100 transition">
-                <i class="fa-solid fa-lock"></i> Secure Rentry
+            <a href="#home" class="text-xl font-bold flex items-center gap-2 hover:text-indigo-400 transition">
+                <i class="fa-solid fa-paste text-indigo-400"></i> 
+                <span class="text-white">Rentry</span><span class="text-indigo-400">Clone</span>
             </a>
-            <div id="navLinks" class="flex gap-6 text-sm font-medium">
-                <a href="#home" class="hover:text-indigo-200 transition flex items-center gap-2">
-                    <i class="fa-solid fa-plus"></i> New Page
+            <div id="navLinks" class="flex gap-4 text-sm font-medium">
+                <a href="#home" class="text-gray-300 hover:text-white transition flex items-center gap-1">
+                    <i class="fa-solid fa-plus text-xs"></i> New Paste
                 </a>
-                <a href="#dashboard" class="hover:text-indigo-200 transition flex items-center gap-2">
-                    <i class="fa-solid fa-gauge-high"></i> Dashboard
+                <a href="#dashboard" class="text-gray-300 hover:text-white transition flex items-center gap-1">
+                    <i class="fa-solid fa-list text-xs"></i> Dashboard
                 </a>
-                <button id="lockBtn" class="hidden hover:text-indigo-200 transition flex items-center gap-2" onclick="app.lock()">
-                    <i class="fa-solid fa-lock"></i> Lock
+                <button id="lockBtn" class="hidden text-gray-300 hover:text-white transition flex items-center gap-1" onclick="app.lock()">
+                    <i class="fa-solid fa-lock text-xs"></i> Lock
                 </button>
             </div>
         </div>
     </nav>
 
-    <!-- ========== Main Content Area ========== -->
+    <!-- ========== Main Content ========== -->
     <main id="app" class="container mx-auto px-4 py-8 flex-grow fade-in">
         <div class="text-center py-20">
             <div class="spinner"></div>
-            <p class="mt-4 text-gray-600">Loading...</p>
+            <p class="mt-4 text-gray-400">Loading...</p>
         </div>
     </main>
 
-    <!-- ========== Toast Notifications ========== -->
-    <div id="toast" class="fixed bottom-5 right-5 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3 z-50">
+    <!-- ========== Toast ========== -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-gray-700 text-white px-6 py-3 rounded-lg shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3 z-50 border border-gray-600">
         <i id="toast-icon" class="fa-solid fa-circle-check text-green-400"></i>
         <span id="toast-msg"></span>
     </div>
 
     <script>
     // ============================================
-    // COMPLETE APP - GitHub Pages Only
-    // All data encrypted with AES-256
-    // Public JSON endpoints available
+    // RENTRY CLONE + PUBLIC JSON API
+    // Single file - GitHub Pages compatible
     // ============================================
     
     const app = {
         // ========================================
-        // State Variables
+        // State
         // ========================================
-        masterKey: null,          // Encryption key derived from password
-        isUnlocked: false,        // Is app unlocked?
-        publicSlugs: new Set(),   // Track which slugs are public
+        masterKey: null,
+        isUnlocked: false,
         
         // ========================================
-        // Encryption Utilities
+        // Encryption
         // ========================================
-        
-        // Encrypt text with AES
         encrypt(text, key) {
             return CryptoJS.AES.encrypt(text, key).toString();
         },
         
-        // Decrypt text with AES
         decrypt(ciphertext, key) {
             try {
                 const bytes = CryptoJS.AES.decrypt(ciphertext, key);
@@ -134,16 +112,13 @@
             }
         },
         
-        // Derive encryption key from password
         deriveKey(password) {
-            return CryptoJS.SHA256(password + "secure_rentry_salt_2024_v2").toString();
+            return CryptoJS.SHA256(password + "rentry_clone_salt_2024").toString();
         },
         
         // ========================================
-        // Encrypted LocalStorage Operations
+        // Encrypted Storage
         // ========================================
-        
-        // Save encrypted data
         saveData(key, data) {
             if (!this.masterKey) return false;
             const encrypted = this.encrypt(JSON.stringify(data), this.masterKey);
@@ -151,7 +126,6 @@
             return true;
         },
         
-        // Load and decrypt data
         loadData(key) {
             if (!this.masterKey) return null;
             const encrypted = localStorage.getItem('enc_' + key);
@@ -164,111 +138,115 @@
             }
         },
         
-        // Delete encrypted data
-        deleteData(key) {
-            localStorage.removeItem('enc_' + key);
+        // ========================================
+        // Public Data (Unencrypted - accessible via JSON API)
+        // ========================================
+        savePublicPage(page) {
+            // Store a public unencrypted copy for JSON API access
+            const publicData = {
+                slug: page.slug,
+                content: page.content,
+                created_at: page.createdAt,
+                updated_at: page.updatedAt,
+                edit_token: page.editToken
+            };
+            localStorage.setItem('pub_' + page.slug, JSON.stringify(publicData));
+        },
+        
+        getPublicPage(slug) {
+            const data = localStorage.getItem('pub_' + slug);
+            if (!data) return null;
+            try {
+                return JSON.parse(data);
+            } catch (e) {
+                return null;
+            }
+        },
+        
+        deletePublicPage(slug) {
+            localStorage.removeItem('pub_' + slug);
         },
         
         // ========================================
-        // Authentication
+        // Auth
         // ========================================
-        
-        // Check if password exists
         hasStoredPassword() {
-            return localStorage.getItem('password_hash') !== null;
+            return localStorage.getItem('pwd_hash') !== null;
         },
         
-        // Setup new password
         setupPassword(password) {
             const hash = CryptoJS.SHA256(password).toString();
-            localStorage.setItem('password_hash', hash);
+            localStorage.setItem('pwd_hash', hash);
             this.masterKey = this.deriveKey(password);
             this.isUnlocked = true;
-            
-            // Initialize empty pages array
             this.saveData('pages', []);
-            this.saveData('public_slugs', []);
-            
-            this.showToast('Password created successfully!', 'success');
+            this.showToast('Account created! Start pasting.', 'success');
         },
         
-        // Verify password
         verifyPassword(password) {
-            const storedHash = localStorage.getItem('password_hash');
+            const storedHash = localStorage.getItem('pwd_hash');
             if (!storedHash) return false;
-            const inputHash = CryptoJS.SHA256(password).toString();
-            return inputHash === storedHash;
+            return CryptoJS.SHA256(password).toString() === storedHash;
         },
         
-        // Unlock app
         unlock(password) {
             if (this.verifyPassword(password)) {
                 this.masterKey = this.deriveKey(password);
                 this.isUnlocked = true;
-                
-                // Load public slugs
-                const publicSlugs = this.loadData('public_slugs') || [];
-                this.publicSlugs = new Set(publicSlugs);
-                
                 return true;
             }
             return false;
         },
         
-        // Lock app
         lock() {
             this.masterKey = null;
             this.isUnlocked = false;
-            this.publicSlugs = new Set();
             this.navigate('login');
             this.showToast('App locked', 'success');
         },
         
         // ========================================
-        // Page Management
+        // Page CRUD
         // ========================================
-        
-        // Get all pages
         getPages() {
             return this.loadData('pages') || [];
         },
         
-        // Save all pages
         savePages(pages) {
             this.saveData('pages', pages);
         },
         
-        // Create new page
         createPage(slug, content) {
             const pages = this.getPages();
             
-            // Check for duplicate slug
             if (pages.find(p => p.slug === slug)) {
-                return { success: false, error: 'This slug already exists' };
+                return { success: false, error: 'This slug is already taken' };
             }
             
-            const newPage = {
+            const editToken = CryptoJS.SHA256(slug + Date.now() + Math.random()).toString().substring(0, 32);
+            
+            const page = {
                 slug: slug,
                 content: content,
-                isPublic: false,     // Public JSON access flag
-                publicToken: null,   // Token for public JSON access
+                editToken: editToken,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
             
-            pages.push(newPage);
+            pages.push(page);
             this.savePages(pages);
             
-            return { success: true, page: newPage };
+            // Always save public copy for JSON API access
+            this.savePublicPage(page);
+            
+            return { success: true, page: page };
         },
         
-        // Get single page
         getPage(slug) {
             const pages = this.getPages();
             return pages.find(p => p.slug === slug) || null;
         },
         
-        // Update page
         updatePage(slug, content) {
             const pages = this.getPages();
             const index = pages.findIndex(p => p.slug === slug);
@@ -281,112 +259,46 @@
             pages[index].updatedAt = new Date().toISOString();
             this.savePages(pages);
             
+            // Update public copy
+            this.savePublicPage(pages[index]);
+            
             return { success: true, page: pages[index] };
         },
         
-        // Delete page
         deletePage(slug) {
             let pages = this.getPages();
             pages = pages.filter(p => p.slug !== slug);
             this.savePages(pages);
-            
-            // Remove from public slugs
-            this.publicSlugs.delete(slug);
-            this.saveData('public_slugs', Array.from(this.publicSlugs));
-            
-            // Remove public data
-            localStorage.removeItem('public_' + slug);
-            
+            this.deletePublicPage(slug);
             return { success: true };
         },
         
         // ========================================
-        // Public JSON Access System
+        // JSON URL Generator
         // ========================================
-        
-        // Toggle public access for a page
-        togglePublic(slug) {
-            const pages = this.getPages();
-            const index = pages.findIndex(p => p.slug === slug);
-            
-            if (index === -1) return { success: false, error: 'Page not found' };
-            
-            if (pages[index].isPublic) {
-                // Make private
-                pages[index].isPublic = false;
-                pages[index].publicToken = null;
-                this.publicSlugs.delete(slug);
-                localStorage.removeItem('public_' + slug);
-            } else {
-                // Make public
-                const token = CryptoJS.SHA256(slug + Date.now() + Math.random()).toString().substring(0, 32);
-                pages[index].isPublic = true;
-                pages[index].publicToken = token;
-                this.publicSlugs.add(slug);
-                
-                // Store public copy (unencrypted)
-                localStorage.setItem('public_' + slug, JSON.stringify({
-                    slug: slug,
-                    content: pages[index].content,
-                    token: token,
-                    created_at: pages[index].createdAt,
-                    updated_at: pages[index].updatedAt
-                }));
-            }
-            
-            this.savePages(pages);
-            this.saveData('public_slugs', Array.from(this.publicSlugs));
-            
-            return { 
-                success: true, 
-                isPublic: pages[index].isPublic,
-                publicUrl: pages[index].isPublic ? this.getPublicUrl(slug) : null
-            };
+        getJsonUrl(slug) {
+            const base = window.location.origin + window.location.pathname;
+            return `${base}?api=json&slug=${slug}`;
         },
         
-        // Check if page is public
-        isPagePublic(slug) {
-            return this.publicSlugs.has(slug);
-        },
-        
-        // Get public page data
-        getPublicPageData(slug) {
-            const data = localStorage.getItem('public_' + slug);
-            if (!data) return null;
-            try {
-                return JSON.parse(data);
-            } catch (e) {
-                return null;
-            }
-        },
-        
-        // Get public JSON URL
-        getPublicUrl(slug) {
-            const baseUrl = window.location.origin + window.location.pathname;
-            return `${baseUrl}?api=json&slug=${slug}`;
+        getRawUrl(slug) {
+            const base = window.location.origin + window.location.pathname;
+            return `${base}?api=raw&slug=${slug}`;
         },
         
         // ========================================
-        // UI Utilities
+        // Toast
         // ========================================
-        
         showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             const icon = document.getElementById('toast-icon');
             const msg = document.getElementById('toast-msg');
-            
             msg.textContent = message;
-            
-            if (type === 'error') {
-                icon.className = 'fa-solid fa-circle-xmark text-red-400';
-            } else {
-                icon.className = 'fa-solid fa-circle-check text-green-400';
-            }
-            
+            icon.className = type === 'error' 
+                ? 'fa-solid fa-circle-xmark text-red-400' 
+                : 'fa-solid fa-circle-check text-green-400';
             toast.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => {
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 3000);
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3500);
         },
         
         navigate(route) {
@@ -395,67 +307,189 @@
         
         updateNav() {
             const lockBtn = document.getElementById('lockBtn');
-            if (this.isUnlocked) {
-                lockBtn.classList.remove('hidden');
-            } else {
-                lockBtn.classList.add('hidden');
-            }
+            lockBtn.classList.toggle('hidden', !this.isUnlocked);
+        },
+        
+        copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                this.showToast('Copied to clipboard!', 'success');
+            }).catch(() => {
+                prompt('Copy this URL:', text);
+            });
         },
         
         // ========================================
-        // Page Renderers
+        // Render: Public View (No Login Required)
         // ========================================
+        renderPublicView(container, slug) {
+            const publicPage = this.getPublicPage(slug);
+            
+            if (!publicPage) {
+                container.innerHTML = `
+                    <div class="max-w-2xl mx-auto text-center py-20">
+                        <i class="fa-solid fa-file-circle-question text-7xl text-gray-600 mb-6"></i>
+                        <h2 class="text-3xl font-bold text-gray-300 mb-3">Paste Not Found</h2>
+                        <p class="text-gray-500 mb-2">The paste <code class="text-indigo-400 bg-gray-800 px-2 py-1 rounded">${slug}</code> doesn't exist</p>
+                        <a href="#home" class="inline-block mt-4 text-indigo-400 hover:text-indigo-300 font-bold">
+                            <i class="fa-solid fa-arrow-left"></i> Create New Paste
+                        </a>
+                    </div>
+                `;
+                return;
+            }
+            
+            const jsonUrl = this.getJsonUrl(slug);
+            const rawUrl = this.getRawUrl(slug);
+            
+            container.innerHTML = `
+                <div class="max-w-4xl mx-auto">
+                    <!-- Paste Content -->
+                    <div class="bg-gray-800 rounded-xl border border-gray-700 shadow-xl mb-6">
+                        <div class="p-5 border-b border-gray-700 flex justify-between items-center flex-wrap gap-3">
+                            <div>
+                                <h1 class="text-xl font-bold font-mono text-indigo-400">/${publicPage.slug}</h1>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    <i class="fa-regular fa-clock"></i> 
+                                    ${new Date(publicPage.created_at).toLocaleString()}
+                                    ${publicPage.updated_at !== publicPage.created_at ? ' (edited)' : ''}
+                                </p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="app.copyToClipboard('${jsonUrl}')" 
+                                    class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-500 transition font-bold text-sm">
+                                    <i class="fa-solid fa-code"></i> JSON
+                                </button>
+                                <button onclick="app.copyToClipboard('${rawUrl}')" 
+                                    class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-500 transition font-bold text-sm">
+                                    <i class="fa-solid fa-file-lines"></i> Raw
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <pre class="content-area text-gray-200 text-sm bg-gray-900 p-5 rounded-lg leading-relaxed border border-gray-700 overflow-x-auto">${publicPage.content}</pre>
+                        </div>
+                    </div>
+                    
+                    <!-- API Info -->
+                    <div class="bg-gray-800 rounded-xl border border-gray-700 shadow-xl p-6">
+                        <h3 class="font-bold text-lg text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-plug text-indigo-400"></i> API Access
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <!-- JSON Endpoint -->
+                            <div class="bg-gray-900 rounded-lg p-4 border border-gray-700">
+                                <p class="text-xs font-semibold text-gray-400 mb-2">JSON Endpoint (with metadata):</p>
+                                <div class="flex items-center gap-2">
+                                    <code class="flex-1 text-xs text-green-400 break-all font-mono bg-gray-800 p-2 rounded">${jsonUrl}</code>
+                                    <button onclick="app.copyToClipboard('${jsonUrl}')" class="text-gray-400 hover:text-white p-2">
+                                        <i class="fa-solid fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Raw Endpoint -->
+                            <div class="bg-gray-900 rounded-lg p-4 border border-gray-700">
+                                <p class="text-xs font-semibold text-gray-400 mb-2">Raw Content (plain text only):</p>
+                                <div class="flex items-center gap-2">
+                                    <code class="flex-1 text-xs text-yellow-400 break-all font-mono bg-gray-800 p-2 rounded">${rawUrl}</code>
+                                    <button onclick="app.copyToClipboard('${rawUrl}')" class="text-gray-400 hover:text-white p-2">
+                                        <i class="fa-solid fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Usage Examples -->
+                        <div class="mt-4 bg-gray-900 rounded-lg p-4 border border-gray-700">
+                            <p class="text-xs font-semibold text-gray-400 mb-3">Usage Examples:</p>
+                            
+                            <div class="space-y-3">
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">cURL:</p>
+                                    <pre class="text-xs bg-gray-950 text-green-400 p-3 rounded overflow-x-auto"><code>curl "${jsonUrl}"</code></pre>
+                                </div>
+                                
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">JavaScript (fetch):</p>
+                                    <pre class="text-xs bg-gray-950 text-green-400 p-3 rounded overflow-x-auto"><code>fetch("${jsonUrl}")
+  .then(res => res.json())
+  .then(data => console.log(data.content));</code></pre>
+                                </div>
+                                
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Python:</p>
+                                    <pre class="text-xs bg-gray-950 text-green-400 p-3 rounded overflow-x-auto"><code>import requests
+r = requests.get("${jsonUrl}")
+data = r.json()
+print(data["content"])</code></pre>
+                                </div>
+                                
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">PHP:</p>
+                                    <pre class="text-xs bg-gray-950 text-green-400 p-3 rounded overflow-x-auto"><code>$data = file_get_contents("${jsonUrl}");
+$json = json_decode($data, true);
+echo $json['content'];</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        },
         
-        // Login / Setup Password Page
+        // ========================================
+        // Render: Login
+        // ========================================
         renderLogin(container) {
             const hasPassword = this.hasStoredPassword();
             
             container.innerHTML = `
-                <div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-100 mt-10">
+                <div class="max-w-md mx-auto bg-gray-800 p-8 rounded-xl border border-gray-700 shadow-xl mt-10">
                     <div class="text-center mb-6">
-                        <div class="bg-indigo-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="fa-solid fa-shield-halved text-3xl text-indigo-600"></i>
+                        <div class="bg-indigo-900 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-indigo-500">
+                            <i class="fa-solid fa-paste text-3xl text-indigo-400"></i>
                         </div>
-                        <h2 class="text-2xl font-bold text-gray-800">
-                            ${hasPassword ? 'Unlock Your Vault' : 'Create Master Password'}
+                        <h2 class="text-2xl font-bold text-white">
+                            ${hasPassword ? 'Unlock Dashboard' : 'Create Account'}
                         </h2>
-                        <p class="text-gray-500 mt-2 text-sm">
+                        <p class="text-gray-400 mt-2 text-sm">
                             ${hasPassword 
-                                ? 'Enter your master password to decrypt and access your data.' 
-                                : 'Create a strong master password. All your data will be encrypted with AES-256. This password cannot be recovered!'}
+                                ? 'Enter your password to manage pastes' 
+                                : 'Create a password to start creating pastes. This password cannot be recovered!'}
                         </p>
                     </div>
                     
                     <form id="passwordForm" class="space-y-4">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Master Password</label>
+                            <label class="block text-sm font-semibold text-gray-300 mb-1">Password</label>
                             <input type="password" id="password" required 
-                                class="block w-full px-4 py-3 rounded-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" 
-                                placeholder="${hasPassword ? 'Enter your master password' : 'Create a strong password (min 8 characters)'}"
+                                class="block w-full px-4 py-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" 
+                                placeholder="${hasPassword ? 'Enter password' : 'Create password (min 8 chars)'}"
                                 minlength="${hasPassword ? '1' : '8'}"
                                 autocomplete="off">
                         </div>
                         
                         ${!hasPassword ? `
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Confirm Password</label>
+                            <label class="block text-sm font-semibold text-gray-300 mb-1">Confirm Password</label>
                             <input type="password" id="confirmPassword" required minlength="8" 
-                                class="block w-full px-4 py-3 rounded-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" 
-                                placeholder="Re-enter your password"
+                                class="block w-full px-4 py-3 rounded-md bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" 
+                                placeholder="Confirm password"
                                 autocomplete="off">
                         </div>
                         ` : ''}
                         
-                        <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition font-bold shadow-md text-lg">
-                            <i class="fa-solid fa-key"></i> ${hasPassword ? 'Unlock' : 'Create Vault'}
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-500 transition font-bold shadow-md text-lg">
+                            <i class="fa-solid fa-key"></i> ${hasPassword ? 'Unlock' : 'Create Account'}
                         </button>
                         
                         ${hasPassword ? `
-                        <div class="border-t border-gray-200 pt-4 mt-4">
-                            <button type="button" id="resetBtn" class="w-full bg-red-50 text-red-600 py-3 px-4 rounded-md hover:bg-red-100 transition font-bold border border-red-200">
-                                <i class="fa-solid fa-triangle-exclamation"></i> Reset Everything (Delete All Data)
+                        <div class="border-t border-gray-700 pt-4 mt-4">
+                            <button type="button" id="resetBtn" class="w-full bg-red-900/50 text-red-400 py-3 px-4 rounded-md hover:bg-red-900 transition font-bold border border-red-800 text-sm">
+                                <i class="fa-solid fa-triangle-exclamation"></i> Reset Everything
                             </button>
-                            <p class="text-xs text-gray-400 text-center mt-2">This will permanently delete all encrypted data</p>
+                            <p class="text-xs text-gray-500 text-center mt-2">Deletes all data permanently</p>
                         </div>
                         ` : ''}
                     </form>
@@ -467,8 +501,8 @@
                 const password = document.getElementById('password').value;
                 
                 if (!hasPassword) {
-                    const confirmPassword = document.getElementById('confirmPassword').value;
-                    if (password !== confirmPassword) {
+                    const confirm = document.getElementById('confirmPassword').value;
+                    if (password !== confirm) {
                         this.showToast('Passwords do not match', 'error');
                         return;
                     }
@@ -480,22 +514,22 @@
                     this.navigate('home');
                 } else {
                     if (this.unlock(password)) {
-                        this.showToast('Vault unlocked successfully!', 'success');
+                        this.showToast('Unlocked!', 'success');
                         this.navigate('dashboard');
                     } else {
-                        this.showToast('Invalid password', 'error');
+                        this.showToast('Wrong password', 'error');
                     }
                 }
             });
             
             if (hasPassword) {
                 document.getElementById('resetBtn').addEventListener('click', () => {
-                    if (confirm('WARNING: This will permanently delete ALL your encrypted data!\n\nAre you absolutely sure?')) {
-                        if (confirm('FINAL WARNING: This action CANNOT be undone!\n\nDelete everything?')) {
+                    if (confirm('DELETE ALL DATA?\n\nThis cannot be undone!')) {
+                        if (confirm('FINAL WARNING!\n\nReally delete everything?')) {
                             localStorage.clear();
                             this.isUnlocked = false;
                             this.masterKey = null;
-                            this.showToast('All data has been deleted', 'success');
+                            this.showToast('All data deleted', 'success');
                             this.renderLogin(container);
                         }
                     }
@@ -503,7 +537,9 @@
             }
         },
         
-        // Home Page - Create New
+        // ========================================
+        // Render: Home (Create Paste)
+        // ========================================
         renderHome(container) {
             if (!this.isUnlocked) {
                 this.navigate('login');
@@ -511,34 +547,37 @@
             }
             
             container.innerHTML = `
-                <div class="max-w-3xl mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-100">
-                    <h2 class="text-2xl font-bold mb-6 text-indigo-700 flex items-center gap-2">
-                        <i class="fa-solid fa-file-circle-plus"></i> Create New Page
+                <div class="max-w-3xl mx-auto bg-gray-800 p-8 rounded-xl border border-gray-700 shadow-xl">
+                    <h2 class="text-2xl font-bold mb-2 text-white flex items-center gap-2">
+                        <i class="fa-solid fa-file-circle-plus text-indigo-400"></i> Create New Paste
                     </h2>
+                    <p class="text-gray-400 text-sm mb-6">Each paste gets a public URL and JSON API endpoint automatically</p>
+                    
                     <form id="createForm" class="space-y-5">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Page Slug (URL Identifier)</label>
+                            <label class="block text-sm font-semibold text-gray-300 mb-1">
+                                Paste Slug <span class="text-gray-500">(URL name)</span>
+                            </label>
                             <div class="flex rounded-md shadow-sm">
-                                <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm font-mono">
-                                    page/
+                                <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-600 bg-gray-700 text-gray-400 text-sm font-mono">
+                                    / 
                                 </span>
                                 <input type="text" id="slug" required pattern="[a-zA-Z0-9_-]+" 
-                                    class="flex-1 block w-full px-4 py-3 rounded-r-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono" 
-                                    placeholder="my-awesome-page">
+                                    class="flex-1 block w-full px-4 py-3 rounded-r-md bg-gray-700 border border-gray-600 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono" 
+                                    placeholder="my-awesome-paste">
                             </div>
-                            <p class="text-xs text-gray-500 mt-1">Letters, numbers, hyphens, and underscores only (3-50 characters)</p>
+                            <p class="text-xs text-gray-500 mt-1">Letters, numbers, hyphens, underscores (3-50 chars)</p>
                         </div>
                         
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Content</label>
-                            <textarea id="content" required rows="14" 
-                                class="block w-full px-4 py-3 rounded-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm" 
-                                placeholder="Write your page content here...&#10;&#10;This content will be encrypted and stored securely."></textarea>
-                            <p class="text-xs text-gray-500 mt-1">Supports plain text and will be displayed as-is</p>
+                            <label class="block text-sm font-semibold text-gray-300 mb-1">Content</label>
+                            <textarea id="content" required rows="16" 
+                                class="content-area block w-full px-4 py-3 rounded-md bg-gray-700 border border-gray-600 text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm" 
+                                placeholder="Paste your content here...&#10;&#10;Supports plain text.&#10;Markdown-friendly."></textarea>
                         </div>
                         
-                        <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition font-bold shadow-md flex justify-center items-center gap-2 text-lg">
-                            <i class="fa-solid fa-lock"></i> Encrypt & Save Page
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-500 transition font-bold shadow-md text-lg flex justify-center items-center gap-2">
+                            <i class="fa-solid fa-paper-plane"></i> Create Paste
                         </button>
                     </form>
                 </div>
@@ -550,161 +589,29 @@
                 const content = document.getElementById('content').value;
                 
                 if (!/^[a-zA-Z0-9_-]{3,50}$/.test(slug)) {
-                    this.showToast('Invalid slug: 3-50 characters, letters/numbers/hyphens/underscores only', 'error');
+                    this.showToast('Invalid slug: 3-50 chars, letters/numbers/hyphens/underscores', 'error');
                     return;
                 }
                 
                 const result = this.createPage(slug, content);
                 if (result.success) {
-                    this.showToast('Page created and encrypted successfully!', 'success');
-                    this.navigate('view/' + slug);
+                    const jsonUrl = this.getJsonUrl(slug);
+                    this.showToast(`Paste created! JSON API ready`, 'success');
+                    
+                    // Store edit token
+                    sessionStorage.setItem('edit_token_' + slug, result.page.editToken);
+                    
+                    // Navigate to public view
+                    window.location.hash = '#view/' + slug;
                 } else {
                     this.showToast(result.error, 'error');
                 }
             });
         },
         
-        // View Page
-        renderView(container, slug) {
-            if (!this.isUnlocked) {
-                this.navigate('login');
-                return;
-            }
-            
-            const page = this.getPage(slug);
-            
-            if (!page) {
-                container.innerHTML = `
-                    <div class="text-center py-20">
-                        <i class="fa-solid fa-file-circle-question text-7xl text-gray-300 mb-4"></i>
-                        <h2 class="text-2xl font-bold text-gray-600">Page Not Found</h2>
-                        <p class="text-gray-500 mt-2">The page "${slug}" doesn't exist</p>
-                        <a href="#home" class="mt-4 inline-block text-indigo-600 hover:underline font-bold">
-                            <i class="fa-solid fa-arrow-left"></i> Back to Home
-                        </a>
-                    </div>
-                `;
-                return;
-            }
-            
-            const publicUrl = page.isPublic ? this.getPublicUrl(slug) : null;
-            
-            container.innerHTML = `
-                <div class="max-w-4xl mx-auto">
-                    <!-- Page Content Card -->
-                    <div class="bg-white rounded-xl shadow-lg border border-gray-100 mb-6">
-                        <div class="p-6 border-b border-gray-100 flex justify-between items-start flex-wrap gap-4">
-                            <div>
-                                <h1 class="text-2xl font-bold font-mono text-indigo-700">
-                                    <i class="fa-solid fa-file-lock"></i> ${page.slug}
-                                </h1>
-                                <div class="flex gap-4 mt-2 text-xs text-gray-500">
-                                    <span><i class="fa-regular fa-calendar"></i> Created: ${new Date(page.createdAt).toLocaleString()}</span>
-                                    <span><i class="fa-regular fa-clock"></i> Updated: ${new Date(page.updatedAt).toLocaleString()}</span>
-                                </div>
-                            </div>
-                            <div class="flex gap-2 flex-wrap">
-                                <button onclick="app.navigate('edit/${page.slug}')" 
-                                    class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition font-bold text-sm">
-                                    <i class="fa-solid fa-pen-to-square"></i> Edit
-                                </button>
-                                <button onclick="app.copyContent('${page.slug}')" 
-                                    class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition font-bold text-sm">
-                                    <i class="fa-solid fa-copy"></i> Copy Content
-                                </button>
-                                <button onclick="app.togglePublicAccess('${page.slug}')" 
-                                    class="${page.isPublic ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 hover:bg-gray-500'} text-white px-4 py-2 rounded-lg transition font-bold text-sm">
-                                    <i class="fa-solid fa-${page.isPublic ? 'globe' : 'lock'}"></i> 
-                                    ${page.isPublic ? 'Public' : 'Private'}
-                                </button>
-                            </div>
-                        </div>
-                        <div class="p-6">
-                            <pre class="text-gray-800 font-mono text-sm bg-gray-50 p-6 rounded-lg leading-relaxed border border-gray-200">${page.content}</pre>
-                        </div>
-                    </div>
-                    
-                    <!-- Public JSON Access Card -->
-                    <div class="${page.isPublic ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'} border rounded-xl p-6">
-                        <div class="flex items-start justify-between flex-wrap gap-4">
-                            <div class="flex items-start gap-4">
-                                <div class="${page.isPublic ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-500'} p-3 rounded-full">
-                                    <i class="fa-solid fa-code text-xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="font-bold text-lg ${page.isPublic ? 'text-green-800' : 'text-gray-600'}">
-                                        JSON API Access
-                                    </h3>
-                                    <p class="text-sm ${page.isPublic ? 'text-green-700' : 'text-gray-500'} mt-1">
-                                        ${page.isPublic 
-                                            ? '✅ This page is publicly accessible via JSON API' 
-                                            : '🔒 Make this page public to get a JSON API endpoint'}
-                                    </p>
-                                    ${page.isPublic ? `
-                                    <div class="mt-3 bg-white rounded-lg p-3 border border-green-200">
-                                        <code class="text-xs text-green-800 break-all font-mono">${publicUrl}</code>
-                                    </div>
-                                    ` : ''}
-                                </div>
-                            </div>
-                            ${page.isPublic ? `
-                            <button onclick="app.copyToClipboard('${publicUrl}')" 
-                                class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition font-bold text-sm">
-                                <i class="fa-solid fa-link"></i> Copy JSON URL
-                            </button>
-                            ` : ''}
-                        </div>
-                        ${page.isPublic ? `
-                        <div class="mt-4 bg-white rounded-lg p-4 border border-green-200">
-                            <p class="text-xs font-semibold text-gray-500 mb-2">Example usage (curl):</p>
-                            <pre class="text-xs bg-gray-900 text-green-400 p-3 rounded overflow-x-auto"><code>curl "${publicUrl}"</code></pre>
-                            <p class="text-xs font-semibold text-gray-500 mt-3 mb-2">Example usage (JavaScript fetch):</p>
-                            <pre class="text-xs bg-gray-900 text-green-400 p-3 rounded overflow-x-auto"><code>fetch("${publicUrl}")
-  .then(res => res.json())
-  .then(data => console.log(data));</code></pre>
-                        </div>
-                        ` : ''}
-                    </div>
-                </div>
-            `;
-        },
-        
-        // Toggle public access
-        togglePublicAccess(slug) {
-            const result = this.togglePublic(slug);
-            if (result.success) {
-                this.showToast(
-                    result.isPublic ? 'Page is now public! JSON API enabled' : 'Page is now private', 
-                    'success'
-                );
-                this.renderView(document.getElementById('app'), slug);
-            } else {
-                this.showToast(result.error, 'error');
-            }
-        },
-        
-        // Copy content to clipboard
-        copyContent(slug) {
-            const page = this.getPage(slug);
-            if (page) {
-                navigator.clipboard.writeText(page.content).then(() => {
-                    this.showToast('Content copied to clipboard!', 'success');
-                }).catch(() => {
-                    this.showToast('Failed to copy content', 'error');
-                });
-            }
-        },
-        
-        // Copy to clipboard utility
-        copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                this.showToast('URL copied to clipboard!', 'success');
-            }).catch(() => {
-                prompt('Copy this URL:', text);
-            });
-        },
-        
-        // Edit Page
+        // ========================================
+        // Render: Edit Page
+        // ========================================
         renderEdit(container, slug) {
             if (!this.isUnlocked) {
                 this.navigate('login');
@@ -718,23 +625,23 @@
             }
             
             container.innerHTML = `
-                <div class="max-w-3xl mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-100">
-                    <h2 class="text-2xl font-bold mb-6 text-yellow-600 flex items-center gap-2">
-                        <i class="fa-solid fa-pen-to-square"></i> Edit Page: 
-                        <span class="font-mono text-gray-700">${page.slug}</span>
+                <div class="max-w-3xl mx-auto bg-gray-800 p-8 rounded-xl border border-gray-700 shadow-xl">
+                    <h2 class="text-2xl font-bold mb-6 text-yellow-400 flex items-center gap-2">
+                        <i class="fa-solid fa-pen-to-square"></i> Edit: 
+                        <span class="font-mono text-white">/${slug}</span>
                     </h2>
                     <form id="editForm" class="space-y-5">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">Content</label>
-                            <textarea id="editContent" required rows="16" 
-                                class="block w-full px-4 py-3 rounded-md border border-gray-300 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 font-mono text-sm">${page.content}</textarea>
+                            <label class="block text-sm font-semibold text-gray-300 mb-1">Content</label>
+                            <textarea id="editContent" required rows="18" 
+                                class="content-area block w-full px-4 py-3 rounded-md bg-gray-700 border border-gray-600 text-gray-100 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 text-sm">${page.content}</textarea>
                         </div>
                         <div class="flex gap-3">
-                            <button type="submit" class="flex-1 bg-yellow-500 text-white py-3 px-4 rounded-md hover:bg-yellow-600 transition font-bold shadow-md">
-                                <i class="fa-solid fa-check"></i> Save Changes
+                            <button type="submit" class="flex-1 bg-yellow-600 text-white py-3 px-4 rounded-md hover:bg-yellow-500 transition font-bold">
+                                <i class="fa-solid fa-check"></i> Update Paste
                             </button>
-                            <button type="button" onclick="app.navigate('view/${slug}')" 
-                                class="px-6 py-3 border-2 border-gray-300 rounded-md hover:bg-gray-50 transition text-gray-700 font-bold">
+                            <button type="button" onclick="window.location.hash='#view/${slug}'" 
+                                class="px-6 py-3 bg-gray-700 border border-gray-600 rounded-md hover:bg-gray-600 transition text-gray-300 font-bold">
                                 Cancel
                             </button>
                         </div>
@@ -748,26 +655,17 @@
                 const result = this.updatePage(slug, content);
                 
                 if (result.success) {
-                    // Update public copy if page is public
-                    if (result.page.isPublic) {
-                        localStorage.setItem('public_' + slug, JSON.stringify({
-                            slug: slug,
-                            content: content,
-                            token: result.page.publicToken,
-                            created_at: result.page.createdAt,
-                            updated_at: result.page.updatedAt
-                        }));
-                    }
-                    
-                    this.showToast('Page updated successfully!', 'success');
-                    this.navigate('view/' + slug);
+                    this.showToast('Paste updated!', 'success');
+                    window.location.hash = '#view/' + slug;
                 } else {
                     this.showToast(result.error, 'error');
                 }
             });
         },
         
-        // Dashboard
+        // ========================================
+        // Render: Dashboard
+        // ========================================
         renderDashboard(container) {
             if (!this.isUnlocked) {
                 this.navigate('login');
@@ -779,79 +677,69 @@
             container.innerHTML = `
                 <div class="max-w-6xl mx-auto">
                     <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
-                        <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                            <i class="fa-solid fa-gauge-high text-indigo-600"></i> Dashboard
-                            <span class="text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                                ${pages.length} page${pages.length !== 1 ? 's' : ''}
+                        <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-list text-indigo-400"></i> My Pastes
+                            <span class="text-sm font-normal text-gray-400 bg-gray-800 px-3 py-1 rounded-full border border-gray-700">
+                                ${pages.length}
                             </span>
                         </h2>
-                        <a href="#home" class="bg-indigo-600 text-white px-5 py-3 rounded-lg hover:bg-indigo-700 transition font-bold text-sm">
-                            <i class="fa-solid fa-plus"></i> New Page
+                        <a href="#home" class="bg-indigo-600 text-white px-5 py-3 rounded-lg hover:bg-indigo-500 transition font-bold text-sm">
+                            <i class="fa-solid fa-plus"></i> New Paste
                         </a>
                     </div>
                     
-                    <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+                    <div class="bg-gray-800 rounded-xl border border-gray-700 shadow-xl overflow-hidden">
                         ${pages.length === 0 ? `
                             <div class="text-center py-16">
-                                <i class="fa-solid fa-file-circle-plus text-6xl text-gray-300 mb-4"></i>
-                                <h3 class="text-xl font-bold text-gray-600 mb-2">No Pages Yet</h3>
-                                <p class="text-gray-500 mb-6">Create your first encrypted page</p>
-                                <a href="#home" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition font-bold inline-block">
-                                    <i class="fa-solid fa-plus"></i> Create First Page
+                                <i class="fa-solid fa-paste text-6xl text-gray-600 mb-4"></i>
+                                <h3 class="text-xl font-bold text-gray-400 mb-2">No Pastes Yet</h3>
+                                <p class="text-gray-500 mb-6">Create your first paste to share</p>
+                                <a href="#home" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-500 transition font-bold inline-block">
+                                    <i class="fa-solid fa-plus"></i> Create Paste
                                 </a>
                             </div>
                         ` : `
                             <div class="overflow-x-auto">
                                 <table class="w-full">
                                     <thead>
-                                        <tr class="bg-gray-50 border-b-2 border-gray-200">
-                                            <th class="py-4 px-6 text-left text-sm font-bold text-gray-600">Slug</th>
-                                            <th class="py-4 px-6 text-left text-sm font-bold text-gray-600">Status</th>
-                                            <th class="py-4 px-6 text-left text-sm font-bold text-gray-600">Created</th>
-                                            <th class="py-4 px-6 text-left text-sm font-bold text-gray-600">Updated</th>
-                                            <th class="py-4 px-6 text-left text-sm font-bold text-gray-600">Actions</th>
+                                        <tr class="bg-gray-900 border-b-2 border-gray-700">
+                                            <th class="py-4 px-6 text-left text-sm font-bold text-gray-400">Slug</th>
+                                            <th class="py-4 px-6 text-left text-sm font-bold text-gray-400">JSON API</th>
+                                            <th class="py-4 px-6 text-left text-sm font-bold text-gray-400">Created</th>
+                                            <th class="py-4 px-6 text-left text-sm font-bold text-gray-400">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody class="divide-y divide-gray-100">
+                                    <tbody class="divide-y divide-gray-700">
                                         ${pages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(page => `
-                                            <tr class="hover:bg-gray-50 transition">
-                                                <td class="py-4 px-6 font-mono text-sm text-indigo-600 font-bold">
-                                                    <i class="fa-solid fa-file-lock text-xs text-gray-400"></i> ${page.slug}
+                                            <tr class="hover:bg-gray-750 transition">
+                                                <td class="py-4 px-6 font-mono text-sm text-indigo-400 font-bold">
+                                                    /${page.slug}
                                                 </td>
                                                 <td class="py-4 px-6">
-                                                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
-                                                        page.isPublic 
-                                                            ? 'bg-green-100 text-green-700' 
-                                                            : 'bg-gray-100 text-gray-600'
-                                                    }">
-                                                        <i class="fa-solid fa-${page.isPublic ? 'globe' : 'lock'}"></i>
-                                                        ${page.isPublic ? 'Public' : 'Private'}
-                                                    </span>
+                                                    <button onclick="app.copyToClipboard('${this.getJsonUrl(page.slug)}')" 
+                                                        class="text-xs bg-gray-700 text-green-400 px-3 py-1 rounded hover:bg-gray-600 transition font-mono">
+                                                        <i class="fa-solid fa-link"></i> JSON
+                                                    </button>
                                                 </td>
-                                                <td class="py-4 px-6 text-sm text-gray-600">
+                                                <td class="py-4 px-6 text-sm text-gray-400">
                                                     ${new Date(page.createdAt).toLocaleDateString()}
-                                                </td>
-                                                <td class="py-4 px-6 text-sm text-gray-600">
-                                                    ${new Date(page.updatedAt).toLocaleDateString()}
                                                 </td>
                                                 <td class="py-4 px-6">
                                                     <div class="flex gap-1">
-                                                        <button onclick="app.navigate('view/${page.slug}')" 
-                                                            class="text-blue-600 hover:bg-blue-50 p-2 rounded transition" title="View">
+                                                        <button onclick="window.location.hash='#view/${page.slug}'" 
+                                                            class="text-blue-400 hover:bg-gray-700 p-2 rounded transition" title="View Public Page">
                                                             <i class="fa-solid fa-eye"></i>
                                                         </button>
                                                         <button onclick="app.navigate('edit/${page.slug}')" 
-                                                            class="text-yellow-600 hover:bg-yellow-50 p-2 rounded transition" title="Edit">
+                                                            class="text-yellow-400 hover:bg-gray-700 p-2 rounded transition" title="Edit">
                                                             <i class="fa-solid fa-pen"></i>
                                                         </button>
-                                                        ${page.isPublic ? `
-                                                        <button onclick="app.copyToClipboard('${this.getPublicUrl(page.slug)}')" 
-                                                            class="text-green-600 hover:bg-green-50 p-2 rounded transition" title="Copy JSON URL">
-                                                            <i class="fa-solid fa-link"></i>
+                                                        <button onclick="app.copyToClipboard('${this.getJsonUrl(page.slug)}')" 
+                                                            class="text-green-400 hover:bg-gray-700 p-2 rounded transition" title="Copy JSON URL">
+                                                            <i class="fa-solid fa-code"></i>
                                                         </button>
-                                                        ` : ''}
                                                         <button onclick="app.deletePageConfirm('${page.slug}')" 
-                                                            class="text-red-600 hover:bg-red-50 p-2 rounded transition" title="Delete">
+                                                            class="text-red-400 hover:bg-gray-700 p-2 rounded transition" title="Delete">
                                                             <i class="fa-solid fa-trash"></i>
                                                         </button>
                                                     </div>
@@ -863,56 +751,108 @@
                             </div>
                         `}
                     </div>
-                    
-                    ${pages.length > 0 ? `
-                    <div class="mt-4 text-xs text-gray-400 text-center">
-                        <i class="fa-solid fa-shield-halved"></i> 
-                        All data is encrypted with AES-256. Public pages are accessible via JSON API.
-                    </div>
-                    ` : ''}
                 </div>
             `;
         },
         
-        // Confirm Delete
         deletePageConfirm(slug) {
-            if (confirm(`Delete page "${slug}"?\n\nThis action cannot be undone!`)) {
-                if (confirm('Are you absolutely sure?')) {
+            if (confirm(`Delete "/${slug}"?\n\nThis will also remove the JSON API endpoint.`)) {
+                if (confirm('Are you sure? This cannot be undone!')) {
                     this.deletePage(slug);
-                    this.showToast('Page deleted successfully', 'success');
+                    this.showToast('Paste deleted', 'success');
                     this.renderDashboard(document.getElementById('app'));
                 }
             }
         },
         
         // ========================================
-        // Routing
+        // API Handler (No login required)
+        // ========================================
+        handleApiRequest() {
+            const params = new URLSearchParams(window.location.search);
+            const api = params.get('api');
+            const slug = params.get('slug');
+            
+            if (!api || !slug) return false;
+            
+            const publicPage = this.getPublicPage(slug);
+            
+            if (!publicPage) {
+                this.outputResponse({ error: 'Paste not found', slug: slug }, 404);
+                return true;
+            }
+            
+            if (api === 'json') {
+                // Full JSON response
+                this.outputResponse({
+                    slug: publicPage.slug,
+                    content: publicPage.content,
+                    created_at: publicPage.created_at,
+                    updated_at: publicPage.updated_at,
+                    url: this.getJsonUrl(slug)
+                });
+            } else if (api === 'raw') {
+                // Raw text only
+                document.body.innerHTML = '';
+                document.head.innerHTML = '';
+                const pre = document.createElement('pre');
+                pre.style.cssText = `
+                    font-family: monospace; padding: 20px; margin: 0;
+                    background: #1a1a2e; color: #e0e0e0; min-height: 100vh;
+                    white-space: pre-wrap; word-wrap: break-word;
+                    font-size: 14px; line-height: 1.6;
+                `;
+                pre.textContent = publicPage.content;
+                document.body.appendChild(pre);
+            } else {
+                this.outputResponse({ error: 'Invalid API type. Use ?api=json or ?api=raw' }, 400);
+            }
+            
+            return true;
+        },
+        
+        outputResponse(data, statusCode = 200) {
+            document.body.innerHTML = '';
+            document.head.innerHTML = '';
+            
+            const pre = document.createElement('pre');
+            pre.style.cssText = `
+                font-family: 'Courier New', monospace;
+                padding: 20px; margin: 0;
+                background: #1a1a2e; color: #c9d1d9;
+                min-height: 100vh; font-size: 14px;
+                line-height: 1.6; white-space: pre-wrap;
+            `;
+            pre.textContent = JSON.stringify(data, null, 2);
+            document.body.appendChild(pre);
+        },
+        
+        // ========================================
+        // Router
         // ========================================
         handleRouting() {
-            const hash = window.location.hash || '#login';
+            const hash = window.location.hash || '#home';
             const main = document.getElementById('app');
             
-            // Update navigation UI
             this.updateNav();
             
-            // Reset and animate
             main.innerHTML = '';
             main.classList.remove('fade-in');
             void main.offsetWidth;
             main.classList.add('fade-in');
             
-            // Route
             if (hash === '#login') {
                 this.renderLogin(main);
+            } else if (hash.startsWith('#view/')) {
+                // Public view - no login required
+                const slug = hash.replace('#view/', '');
+                this.renderPublicView(main, slug);
             } else if (!this.isUnlocked) {
                 this.navigate('login');
             } else if (hash === '#home') {
                 this.renderHome(main);
             } else if (hash === '#dashboard') {
                 this.renderDashboard(main);
-            } else if (hash.startsWith('#view/')) {
-                const slug = hash.replace('#view/', '');
-                this.renderView(main, slug);
             } else if (hash.startsWith('#edit/')) {
                 const slug = hash.replace('#edit/', '');
                 this.renderEdit(main, slug);
@@ -922,78 +862,19 @@
         },
         
         // ========================================
-        // API Handler (for external JSON access)
-        // ========================================
-        handleApiRequest() {
-            const params = new URLSearchParams(window.location.search);
-            
-            if (params.get('api') === 'json') {
-                const slug = params.get('slug');
-                
-                if (!slug) {
-                    this.outputJson({ error: 'Missing slug parameter' }, 400);
-                    return true;
-                }
-                
-                const publicData = this.getPublicPageData(slug);
-                
-                if (!publicData) {
-                    this.outputJson({ error: 'Page not found or not public' }, 404);
-                    return true;
-                }
-                
-                // Return public JSON data
-                this.outputJson({
-                    slug: publicData.slug,
-                    content: publicData.content,
-                    created_at: publicData.created_at,
-                    updated_at: publicData.updated_at,
-                    access_token: publicData.token
-                });
-                
-                return true;
-            }
-            
-            return false;
-        },
-        
-        // Output JSON response
-        outputJson(data, statusCode = 200) {
-            document.body.innerHTML = '';
-            document.head.innerHTML = '';
-            
-            const pre = document.createElement('pre');
-            pre.style.cssText = `
-                font-family: 'Courier New', monospace;
-                padding: 20px;
-                background: #1e1e1e;
-                color: #d4d4d4;
-                min-height: 100vh;
-                margin: 0;
-                font-size: 14px;
-                line-height: 1.6;
-            `;
-            pre.textContent = JSON.stringify(data, null, 2);
-            
-            document.body.appendChild(pre);
-        },
-        
-        // ========================================
-        // Initialize Application
+        // Init
         // ========================================
         init() {
-            // Check if this is an API request
+            // Check for API request FIRST (no auth needed)
             if (this.handleApiRequest()) {
-                return; // Don't load the app UI for API requests
+                return;
             }
             
-            // Listen for hash changes
             window.addEventListener('hashchange', () => this.handleRouting());
             
-            // Check if password is set
             if (this.hasStoredPassword()) {
                 if (!window.location.hash || window.location.hash === '#') {
-                    window.location.hash = '#login';
+                    window.location.hash = '#home';
                 }
             } else {
                 window.location.hash = '#login';
@@ -1003,10 +884,7 @@
         }
     };
 
-    // Start app when page loads
-    document.addEventListener('DOMContentLoaded', () => {
-        app.init();
-    });
+    document.addEventListener('DOMContentLoaded', () => app.init());
     </script>
 </body>
 </html>
