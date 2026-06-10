@@ -1,39 +1,37 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API JSON خالص - نظام PasteBin</title>
+    <title>PasteBin API - Pure JSON</title>
     
-    <link href="https://cdn.jsdelivr.net/npm/@fontsource/tajawal@4.5.0/index.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.18/index.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        body { font-family: 'Tajawal', sans-serif; background: #0d1117; color: #c9d1d9; }
+        body { font-family: 'Inter', sans-serif; background: #0d1117; color: #c9d1d9; }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.1); border-radius: 50%; border-top-color: #58a6ff; animation: spin 1s ease-in-out infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        pre { white-space: pre-wrap; word-wrap: break-word; font-family: monospace; }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
         textarea, input { background: #161b22 !important; color: #c9d1d9 !important; border-color: #30363d !important; }
         textarea:focus, input:focus { border-color: #58a6ff !important; outline: none; }
         .tab-active { background: #1f6feb; color: white; }
         .tab-inactive { background: #21262d; color: #8b949e; }
-        .api-url-box { direction: ltr; text-align: left; }
-        .rtl-text { direction: rtl; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
     
     <nav class="bg-[#161b22] border-b border-[#30363d] sticky top-0 z-50">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <a href="#" class="text-xl font-bold flex items-center gap-2 hover:text-[#58a6ff] transition">
-                <i class="fa-solid fa-bolt text-[#58a6ff]"></i> API JSON خالص
+            <a href="#home" class="text-xl font-bold flex items-center gap-2 hover:text-[#58a6ff] transition">
+                <i class="fa-solid fa-bolt text-[#58a6ff]"></i> Pure JSON API
             </a>
             <div class="flex gap-4 text-sm font-medium">
-                <a href="#home" class="text-gray-300 hover:text-white transition">إنشاء API</a>
-                <a href="#dashboard" class="text-gray-300 hover:text-white transition">API الخاصة بي</a>
+                <a href="#home" class="text-gray-300 hover:text-white transition">Create</a>
+                <a href="#dashboard" class="text-gray-300 hover:text-white transition">My APIs</a>
             </div>
         </div>
     </nav>
@@ -41,23 +39,23 @@
     <main id="app" class="container mx-auto px-4 py-8 flex-grow fade-in">
         <div class="text-center py-20">
             <div class="spinner"></div>
-            <p class="mt-4 text-gray-500">جاري التحميل...</p>
+            <p class="mt-4 text-gray-500">Loading...</p>
         </div>
     </main>
 
-    <div id="toast" class="fixed bottom-5 left-5 bg-[#21262d] text-white px-6 py-3 rounded-lg shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3 z-50 border border-[#30363d]">
+    <div id="toast" class="fixed bottom-5 right-5 bg-[#21262d] text-white px-6 py-3 rounded-lg shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3 z-50 border border-[#30363d]">
         <i id="toast-icon" class="fa-solid fa-circle-check text-green-400"></i>
         <span id="toast-msg"></span>
     </div>
 
     <script>
     // ============================================
-    // نظام API JSON خالص باستخدام jsonblob.com
-    // يعيد JSON نقي مع Content-Type: application/json
+    // PURE JSON API - Using jsonblob.com
+    // Returns pure JSON with Content-Type: application/json
     // ============================================
     
     const app = {
-        // خدمة jsonblob.com API
+        // jsonblob.com API Service
         apiService: {
             baseUrl: 'https://jsonblob.com/api/jsonBlob',
             
@@ -70,8 +68,9 @@
                     },
                     body: JSON.stringify(data)
                 });
-                if (!res.ok) throw new Error('فشل إنشاء API: ' + res.status);
+                if (!res.ok) throw new Error('Failed to create API: ' + res.status);
                 
+                // Get the blob ID from Location header
                 const location = res.headers.get('Location');
                 const id = location.split('/').pop();
                 return { id: id };
@@ -86,13 +85,13 @@
                     },
                     body: JSON.stringify(data)
                 });
-                if (!res.ok) throw new Error('فشل تحديث API: ' + res.status);
+                if (!res.ok) throw new Error('Failed to update API: ' + res.status);
                 return await res.json();
             },
             
             async get(id) {
                 const res = await fetch(`${this.baseUrl}/${id}`);
-                if (!res.ok) throw new Error('فشل جلب API: ' + res.status);
+                if (!res.ok) throw new Error('Failed to fetch API: ' + res.status);
                 return await res.json();
             }
         },
@@ -135,8 +134,8 @@
         
         copy(text) {
             navigator.clipboard.writeText(text).then(() => {
-                this.showToast('تم النسخ!', 'success');
-            }).catch(() => prompt('انسخ هذا الرابط:', text));
+                this.showToast('Copied to clipboard!', 'success');
+            }).catch(() => prompt('Copy this:', text));
         },
         
         getBaseUrl() {
@@ -144,15 +143,15 @@
         },
         
         // ========================================
-        // إنشاء نقطة API جديدة
+        // Create API Endpoint
         // ========================================
         async createApiEndpoint(slug, content, password = null) {
             let passwordHash = null;
-            if (password && password.trim()) {
+            if (password) {
                 passwordHash = await this.hashPassword(password);
             }
             
-            // تحضير البيانات المرسلة
+            // Prepare payload
             let payload;
             try {
                 payload = JSON.parse(content);
@@ -165,12 +164,12 @@
                 };
             }
             
-            // إنشاء API عبر jsonblob.com
+            // Create API endpoint via jsonblob.com
             const result = await this.apiService.create(payload);
             const apiId = result.id;
             const apiUrl = `https://jsonblob.com/api/${apiId}`;
             
-            // حفظ في localStorage
+            // Save to localStorage
             const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
             const filtered = pastes.filter(p => p.slug !== slug);
             
@@ -190,21 +189,22 @@
         },
         
         // ========================================
-        // تحديث API
+        // Update API Endpoint
         // ========================================
         async updateApiEndpoint(slug, content, passwordHash) {
             const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
             const pasteIndex = pastes.findIndex(p => p.slug === slug);
             
-            if (pasteIndex === -1) throw new Error('API غير موجود');
+            if (pasteIndex === -1) throw new Error('Paste not found');
             
             const paste = pastes[pasteIndex];
             
-            // التحقق من كلمة المرور
+            // Verify password
             if (paste.passwordHash && paste.passwordHash !== passwordHash) {
-                throw new Error('كلمة المرور غير صحيحة');
+                throw new Error('Invalid password');
             }
             
+            // Prepare payload
             let payload;
             try {
                 payload = JSON.parse(content);
@@ -213,13 +213,14 @@
                     slug: slug,
                     content: content,
                     timestamp: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
                     type: 'text'
                 };
             }
             
+            // Update API via jsonblob.com
             await this.apiService.update(paste.apiId, payload);
             
+            // Update localStorage
             paste.encoded = this.encode(content);
             paste.updated = new Date().toISOString();
             
@@ -230,26 +231,26 @@
         },
         
         // ========================================
-        // عرض نماذج الأكواد
+        // Render: Code Examples
         // ========================================
         renderCodeExamples(apiUrl) {
             return `
                 <div class="space-y-4">
                     <div class="bg-[#0d1117] rounded-lg p-4 border border-[#30363d]">
                         <div class="flex items-center justify-between mb-2">
-                            <p class="text-xs text-gray-400 font-semibold">🌐 رابط JSON النقي:</p>
+                            <p class="text-xs text-gray-400 font-semibold">🌐 Pure JSON Endpoint:</p>
                             <button onclick="app.copy('${apiUrl}')" class="text-gray-400 hover:text-white text-xs">
-                                <i class="fa-solid fa-copy"></i> نسخ
+                                <i class="fa-solid fa-copy"></i> Copy
                             </button>
                         </div>
-                        <code class="text-xs text-green-400 break-all font-mono bg-[#161b22] p-3 rounded block api-url-box">${apiUrl}</code>
+                        <code class="text-sm text-green-400 break-all font-mono bg-[#161b22] p-3 rounded block">${apiUrl}</code>
                         <div class="mt-3 text-xs text-green-400">
-                            <i class="fa-solid fa-circle-check"></i> نوع المحتوى: application/json
+                            <i class="fa-solid fa-circle-check"></i> Content-Type: application/json
                         </div>
                     </div>
                     
                     <div class="bg-[#0d1117] rounded-lg p-4 border border-[#30363d]">
-                        <p class="text-xs text-gray-400 mb-3 font-semibold">💻 أمثلة الاستخدام:</p>
+                        <p class="text-xs text-gray-400 mb-3 font-semibold">💻 Code Examples:</p>
                         
                         <div class="flex gap-2 mb-3 flex-wrap">
                             <button onclick="app.showTab('python')" id="tab-python" class="tab-active px-3 py-1 rounded text-xs font-bold transition">Python</button>
@@ -261,17 +262,17 @@
                         <div id="code-python" class="code-example">
                             <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto"><code>import requests
 
-# JSON نقي - يعمل مباشرة!
+# Pure JSON - works directly!
 r = requests.get("${apiUrl}")
-print(r.json())  # ✅ يعيد قاموس JSON مباشرة
+print(r.json())  # ✅ Returns dict directly
 
-# الوصول إلى البيانات
+# Access data
 data = r.json()
 print(data)</code></pre>
                         </div>
                         
                         <div id="code-js" class="code-example hidden">
-                            <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto"><code>// جلب JSON النقي
+                            <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto"><code>// Fetch pure JSON
 fetch("${apiUrl}")
   .then(r => r.json())
   .then(data => {
@@ -307,22 +308,22 @@ print_r($data);
         },
         
         // ========================================
-        // عرض صفحة الرئيسية (إنشاء API)
+        // Render: Home Page
         // ========================================
         renderHome(container) {
             container.innerHTML = `
                 <div class="max-w-3xl mx-auto">
                     <div class="text-center mb-8">
                         <h1 class="text-4xl font-bold text-white mb-3">
-                            <i class="fa-solid fa-bolt text-[#58a6ff]"></i> إنشاء API JSON خالص
+                            <i class="fa-solid fa-bolt text-[#58a6ff]"></i> Pure JSON API
                         </h1>
                         <p class="text-gray-400 text-lg">
-                            أنشئ نقاط نهاية JSON حقيقية تعيد <strong>JSON نقياً</strong> مباشرة
+                            Create real JSON endpoints that return <strong>pure JSON</strong> directly
                         </p>
                         <div class="flex justify-center gap-4 mt-4 text-sm flex-wrap">
                             <span class="text-green-400"><i class="fa-solid fa-check"></i> Content-Type: application/json</span>
-                            <span class="text-green-400"><i class="fa-solid fa-check"></i> CORS مفعل</span>
-                            <span class="text-green-400"><i class="fa-solid fa-check"></i> بدون HTML</span>
+                            <span class="text-green-400"><i class="fa-solid fa-check"></i> CORS Enabled</span>
+                            <span class="text-green-400"><i class="fa-solid fa-check"></i> No HTML</span>
                         </div>
                     </div>
                     
@@ -330,34 +331,34 @@ print_r($data);
                         <form id="createForm" class="space-y-5">
                             <div>
                                 <label class="block text-sm font-semibold text-gray-300 mb-1">
-                                    <i class="fa-solid fa-tag text-[#58a6ff]"></i> اسم API (Slug)
+                                    <i class="fa-solid fa-tag text-[#58a6ff]"></i> API Name
                                 </label>
                                 <input type="text" id="slug" required pattern="^[a-zA-Z0-9_-]{3,50}$" 
                                     class="block w-full px-4 py-3 rounded-md font-mono" 
-                                    placeholder="مثال: my-api">
-                                <p class="text-xs text-gray-500 mt-1">3-50 حرفاً: حروف إنجليزية، أرقام، شرطة - أو _</p>
+                                    placeholder="my-api">
+                                <p class="text-xs text-gray-500 mt-1">3-50 characters: letters, numbers, hyphens, underscores</p>
                             </div>
                             
                             <div>
                                 <label class="block text-sm font-semibold text-gray-300 mb-1">
-                                    <i class="fa-solid fa-lock text-[#58a6ff]"></i> كلمة مرور (اختياري)
+                                    <i class="fa-solid fa-lock text-[#58a6ff]"></i> Password (Optional)
                                 </label>
                                 <input type="password" id="password" 
                                     class="block w-full px-4 py-3 rounded-md" 
-                                    placeholder="لحماية التعديل على API">
+                                    placeholder="For editing later">
                             </div>
                             
                             <div>
                                 <label class="block text-sm font-semibold text-gray-300 mb-1">
-                                    <i class="fa-solid fa-code text-[#58a6ff]"></i> محتوى JSON
+                                    <i class="fa-solid fa-code text-[#58a6ff]"></i> JSON Content
                                 </label>
                                 <textarea id="content" required rows="12" 
                                     class="block w-full px-4 py-3 rounded-md text-sm font-mono" 
-                                    placeholder='{"message": "مرحباً بالعالم", "status": "success"}'></textarea>
+                                    placeholder='{"key": "value"}'></textarea>
                             </div>
                             
                             <button type="submit" id="submitBtn" class="w-full bg-[#238636] text-white py-3 px-4 rounded-md hover:bg-[#2ea043] transition font-bold text-lg flex justify-center items-center gap-2">
-                                <i class="fa-solid fa-rocket"></i> إنشاء API JSON خالص
+                                <i class="fa-solid fa-rocket"></i> Create Pure JSON API
                             </button>
                         </form>
                     </div>
@@ -371,45 +372,34 @@ print_r($data);
                 const password = document.getElementById('password').value;
                 
                 if (!/^[a-zA-Z0-9_-]{3,50}$/.test(slug)) {
-                    this.showToast('اسم غير صالح: 3-50 حرفاً (حروف/أرقام/شرطة فقط)', 'error');
-                    return;
-                }
-                
-                try {
-                    // التحقق من صحة JSON
-                    JSON.parse(content);
-                } catch(e) {
-                    this.showToast('محتوى غير صالح: تأكد من كتابة JSON صحيح', 'error');
+                    this.showToast('Invalid slug: 3-50 characters, letters/numbers/hyphens/underscores only', 'error');
                     return;
                 }
                 
                 const btn = document.getElementById('submitBtn');
-                btn.innerHTML = '<div class="spinner"></div> جاري الإنشاء...';
+                btn.innerHTML = '<div class="spinner"></div> Creating...';
                 btn.disabled = true;
 
                 try {
                     const paste = await this.createApiEndpoint(slug, content, password);
-                    this.showToast('تم إنشاء API بنجاح!');
-                    setTimeout(() => {
-                        window.location.href = `${this.getBaseUrl()}?view&slug=${slug}`;
-                    }, 1000);
+                    window.location.href = `${this.getBaseUrl()}?view&slug=${slug}`;
                 } catch (error) {
-                    this.showToast('خطأ: ' + error.message, 'error');
-                    btn.innerHTML = '<i class="fa-solid fa-rocket"></i> إنشاء API JSON خالص';
+                    this.showToast('Error: ' + error.message, 'error');
+                    btn.innerHTML = '<i class="fa-solid fa-rocket"></i> Create Pure JSON API';
                     btn.disabled = false;
                 }
             });
         },
         
         // ========================================
-        // عرض صفحة API
+        // Render: View API
         // ========================================
         renderView(container) {
             const params = new URLSearchParams(window.location.search);
             const slug = params.get('slug');
             
             if (!slug) {
-                container.innerHTML = `<div class="text-center py-20">لم يتم تحديد API</div>`;
+                container.innerHTML = `<div class="text-center py-20">No API specified</div>`;
                 return;
             }
             
@@ -417,7 +407,7 @@ print_r($data);
             const paste = pastes.find(p => p.slug === slug);
             
             if (!paste) {
-                container.innerHTML = `<div class="text-center py-20">API غير موجود</div>`;
+                container.innerHTML = `<div class="text-center py-20">API not found</div>`;
                 return;
             }
             
@@ -425,12 +415,6 @@ print_r($data);
             try { content = this.decode(paste.encoded); } catch(e) { content = ''; }
             
             const isProtected = !!paste.passwordHash;
-            
-            // تنسيق JSON للعرض
-            let formattedContent = content;
-            try {
-                formattedContent = JSON.stringify(JSON.parse(content), null, 2);
-            } catch(e) {}
             
             container.innerHTML = `
                 <div class="max-w-4xl mx-auto">
@@ -442,39 +426,39 @@ print_r($data);
                                         <i class="fa-solid fa-bolt text-[#58a6ff]"></i> /${slug}
                                     </h1>
                                     <div class="text-sm text-gray-400">
-                                        ${isProtected ? '<span class="text-green-400"><i class="fa-solid fa-lock"></i> محمي</span>' : '<span class="text-gray-500"><i class="fa-solid fa-lock-open"></i> عام</span>'}
+                                        ${isProtected ? '<span class="text-green-400"><i class="fa-solid fa-lock"></i> Protected</span>' : '<span class="text-gray-500"><i class="fa-solid fa-lock-open"></i> Public</span>'}
                                     </div>
                                 </div>
                                 <div class="flex gap-2">
                                     <button id="editBtn" class="bg-[#f0883e] text-white px-4 py-2 rounded-lg hover:bg-[#f0883e]/80 transition font-bold text-sm">
-                                        <i class="fa-solid fa-pen"></i> تعديل
+                                        <i class="fa-solid fa-pen"></i> Edit
                                     </button>
                                     <button onclick="app.copy('${paste.apiUrl}')" class="bg-[#1f6feb] text-white px-4 py-2 rounded-lg hover:bg-[#1f6feb]/80 transition font-bold text-sm">
-                                        <i class="fa-solid fa-copy"></i> نسخ الرابط
+                                        <i class="fa-solid fa-copy"></i> Copy URL
                                     </button>
                                 </div>
                             </div>
                         </div>
                         
                         <div class="p-6">
-                            <h3 class="text-sm font-semibold text-gray-400 mb-3">معاينة المحتوى:</h3>
-                            <pre class="text-sm bg-[#0d1117] p-4 rounded-lg border border-[#30363d] overflow-x-auto text-gray-200 font-mono max-h-96">${this.escapeHtml(formattedContent)}</pre>
+                            <h3 class="text-sm font-semibold text-gray-400 mb-3">Content Preview:</h3>
+                            <pre class="text-sm bg-[#0d1117] p-4 rounded-lg border border-[#30363d] overflow-x-auto text-gray-200 font-mono max-h-96">${this.escapeHtml(content)}</pre>
                         </div>
                     </div>
                     
                     <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-6">
                         <h2 class="text-xl font-bold text-white mb-4">
-                            <i class="fa-solid fa-book text-[#58a6ff]"></i> استخدام API
+                            <i class="fa-solid fa-book text-[#58a6ff]"></i> API Usage
                         </h2>
                         
                         <div class="bg-green-900/20 border border-green-700/50 rounded-lg p-4 mb-6">
                             <p class="text-green-400 text-sm font-semibold mb-2">
-                                <i class="fa-solid fa-circle-check"></i> JSON نقي - بدون HTML!
+                                <i class="fa-solid fa-circle-check"></i> Pure JSON - No HTML!
                             </p>
                             <ul class="text-xs text-gray-300 space-y-1">
-                                <li>✓ نوع المحتوى: application/json</li>
-                                <li>✓ يعمل مع r.json() في Python</li>
-                                <li>✓ CORS مفعل لجميع النطاقات</li>
+                                <li>✓ Returns: application/json</li>
+                                <li>✓ Works with r.json() in Python</li>
+                                <li>✓ CORS enabled</li>
                             </ul>
                         </div>
                         
@@ -493,7 +477,7 @@ print_r($data);
         },
         
         async showEditWithPassword(slug) {
-            const password = prompt('أدخل كلمة المرور للتعديل:');
+            const password = prompt('Enter password:');
             if (!password) return;
             
             const hash = await this.hashPassword(password);
@@ -501,7 +485,7 @@ print_r($data);
             const paste = pastes.find(p => p.slug === slug);
             
             if (!paste || paste.passwordHash !== hash) {
-                this.showToast('كلمة المرور غير صحيحة', 'error');
+                this.showToast('Incorrect password', 'error');
                 return;
             }
             
@@ -517,26 +501,20 @@ print_r($data);
             let content;
             try { content = this.decode(paste.encoded); } catch(e) { content = ''; }
             
-            // تنسيق JSON للعرض
-            let formattedContent = content;
-            try {
-                formattedContent = JSON.stringify(JSON.parse(content), null, 2);
-            } catch(e) {}
-            
             container.innerHTML = `
                 <div class="max-w-3xl mx-auto bg-[#161b22] p-8 rounded-xl border border-[#30363d]">
                     <h2 class="text-2xl font-bold mb-6 text-white">
-                        <i class="fa-solid fa-pen"></i> تعديل: /${slug}
+                        <i class="fa-solid fa-pen"></i> Edit: /${slug}
                     </h2>
                     
                     <form id="editForm" class="space-y-5">
                         <textarea id="editContent" required rows="14" 
-                            class="block w-full px-4 py-3 rounded-md text-sm font-mono">${this.escapeHtml(formattedContent)}</textarea>
+                            class="block w-full px-4 py-3 rounded-md text-sm font-mono">${this.escapeHtml(content)}</textarea>
                         
                         <div class="flex gap-3">
-                            <button type="button" onclick="history.back()" class="flex-1 bg-[#30363d] text-white py-3 rounded-md font-bold">إلغاء</button>
+                            <button type="button" onclick="history.back()" class="flex-1 bg-[#30363d] text-white py-3 rounded-md font-bold">Cancel</button>
                             <button type="submit" id="saveBtn" class="flex-1 bg-[#238636] text-white py-3 rounded-md font-bold">
-                                <i class="fa-solid fa-save"></i> تحديث
+                                <i class="fa-solid fa-save"></i> Update
                             </button>
                         </div>
                     </form>
@@ -547,27 +525,19 @@ print_r($data);
                 e.preventDefault();
                 const newContent = document.getElementById('editContent').value;
                 
-                // التحقق من صحة JSON
-                try {
-                    JSON.parse(newContent);
-                } catch(e) {
-                    this.showToast('محتوى غير صالح: تأكد من كتابة JSON صحيح', 'error');
-                    return;
-                }
-                
                 const btn = document.getElementById('saveBtn');
-                btn.innerHTML = '<div class="spinner"></div> جاري التحديث...';
+                btn.innerHTML = '<div class="spinner"></div> Updating...';
                 btn.disabled = true;
 
                 try {
                     await this.updateApiEndpoint(slug, newContent, passwordHash);
-                    this.showToast('تم التحديث بنجاح!', 'success');
+                    this.showToast('Updated!', 'success');
                     setTimeout(() => {
                         window.location.href = `${this.getBaseUrl()}?view&slug=${slug}`;
                     }, 1000);
                 } catch (error) {
-                    this.showToast('خطأ: ' + error.message, 'error');
-                    btn.innerHTML = '<i class="fa-solid fa-save"></i> تحديث';
+                    this.showToast('Error: ' + error.message, 'error');
+                    btn.innerHTML = '<i class="fa-solid fa-save"></i> Update';
                     btn.disabled = false;
                 }
             });
@@ -580,51 +550,42 @@ print_r($data);
                 <div class="max-w-6xl mx-auto">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-2xl font-bold text-white">
-                            <i class="fa-solid fa-list text-[#58a6ff]"></i> API الخاصة بي (${pastes.length})
+                            <i class="fa-solid fa-list text-[#58a6ff]"></i> My APIs (${pastes.length})
                         </h2>
                         <a href="${this.getBaseUrl()}" class="bg-[#238636] text-white px-5 py-3 rounded-lg font-bold text-sm">
-                            <i class="fa-solid fa-plus"></i> إنشاء جديد
+                            <i class="fa-solid fa-plus"></i> New API
                         </a>
                     </div>
                     
                     <div class="bg-[#161b22] rounded-xl border border-[#30363d] overflow-hidden">
                         ${pastes.length === 0 ? `
                             <div class="text-center py-16">
-                                <p class="text-gray-500">لا توجد API حتى الآن</p>
+                                <p class="text-gray-500">No APIs yet</p>
                             </div>
                         ` : `
                             <div class="divide-y divide-[#30363d]">
-                                ${pastes.slice().reverse().map(p => {
-                                    let preview = '';
-                                    try {
-                                        const decoded = this.decode(p.encoded);
-                                        const obj = JSON.parse(decoded);
-                                        preview = Object.keys(obj).slice(0, 3).join(', ');
-                                    } catch(e) { preview = 'نص'; }
-                                    
-                                    return `
+                                ${pastes.reverse().map(p => `
                                     <div class="p-5 hover:bg-[#1c2128] transition">
                                         <div class="flex items-start justify-between flex-wrap gap-4">
                                             <div class="flex-1">
                                                 <a href="${this.getBaseUrl()}?view&slug=${p.slug}" class="text-lg font-bold text-[#58a6ff] font-mono">
                                                     /${p.slug}
                                                 </a>
-                                                ${p.passwordHash ? '<span class="text-xs text-green-400 mr-2"><i class="fa-solid fa-lock"></i></span>' : ''}
-                                                <div class="text-xs text-gray-500 mt-1">${new Date(p.created).toLocaleString('ar')}</div>
-                                                <div class="text-xs text-gray-400 font-mono mt-2 api-url-box">${p.apiUrl}</div>
-                                                <div class="text-xs text-gray-500 mt-1">المفاتيح: ${this.escapeHtml(preview)}</div>
+                                                ${p.passwordHash ? '<span class="text-xs text-green-400 ml-2"><i class="fa-solid fa-lock"></i></span>' : ''}
+                                                <div class="text-xs text-gray-500 mt-1">${new Date(p.created).toLocaleString()}</div>
+                                                <div class="text-xs text-gray-400 font-mono mt-2">${p.apiUrl}</div>
                                             </div>
                                             <div class="flex gap-2">
                                                 <button onclick="app.copy('${p.apiUrl}')" class="text-green-400 hover:bg-[#21262d] px-3 py-2 rounded text-xs font-bold">
-                                                    <i class="fa-solid fa-copy"></i> نسخ
+                                                    <i class="fa-solid fa-copy"></i> Copy
                                                 </button>
                                                 <button onclick="app.deletePaste('${p.slug}')" class="text-red-400 hover:bg-[#21262d] px-3 py-2 rounded text-xs font-bold">
-                                                    <i class="fa-solid fa-trash"></i> حذف
+                                                    <i class="fa-solid fa-trash"></i>
                                                 </button>
                                             </div>
                                         </div>
                                     </div>
-                                `}).join('')}
+                                `).join('')}
                             </div>
                         `}
                     </div>
@@ -633,11 +594,11 @@ print_r($data);
         },
         
         deletePaste(slug) {
-            if (confirm(`هل أنت متأكد من حذف /${slug}؟`)) {
+            if (confirm(`Delete /${slug}?`)) {
                 const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
                 const filtered = pastes.filter(p => p.slug !== slug);
                 localStorage.setItem('my_pastes', JSON.stringify(filtered));
-                this.showToast('تم الحذف', 'success');
+                this.showToast('Deleted', 'success');
                 this.renderDashboard(document.getElementById('app'));
             }
         },
@@ -665,7 +626,6 @@ print_r($data);
         init() {
             this.route();
             window.addEventListener('hashchange', () => this.route());
-            window.addEventListener('popstate', () => this.route());
         }
     };
 
