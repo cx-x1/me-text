@@ -1,1073 +1,481 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="ltr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rentry — Markdown Pastebin</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --ink: #1A1A2E;
-    --ink-soft: #4A4A6A;
-    --accent: #2563EB;
-    --accent-hover: #1D4ED8;
-    --surface: #FAFAFA;
-    --border: #E2E8F0;
-    --border-focus: #93C5FD;
-    --code-bg: #F1F5F9;
-    --danger: #DC2626;
-    --success: #16A34A;
-    --mono: 'JetBrains Mono', monospace;
-    --sans: 'Inter', sans-serif;
-  }
-
-  body {
-    font-family: var(--sans);
-    background: var(--surface);
-    color: var(--ink);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* NAV */
-  nav {
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px;
-    height: 52px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #fff;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  .logo {
-    font-family: var(--mono);
-    font-size: 17px;
-    font-weight: 500;
-    color: var(--ink);
-    text-decoration: none;
-    letter-spacing: -0.5px;
-  }
-  .logo span { color: var(--accent); }
-
-  .nav-links {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
-
-  .nav-link {
-    font-size: 13px;
-    color: var(--ink-soft);
-    text-decoration: none;
-    padding: 5px 10px;
-    border-radius: 6px;
-    transition: background 0.15s, color 0.15s;
-    cursor: pointer;
-    border: none;
-    background: none;
-    font-family: var(--sans);
-  }
-  .nav-link:hover { background: var(--code-bg); color: var(--ink); }
-
-  /* VIEWS */
-  .view { display: none; }
-  .view.active { display: block; }
-
-  /* ─── HOME / EDITOR ─── */
-  .editor-shell {
-    max-width: 860px;
-    margin: 0 auto;
-    padding: 40px 24px 80px;
-    width: 100%;
-  }
-
-  .editor-header {
-    margin-bottom: 24px;
-  }
-
-  .editor-title {
-    font-size: 28px;
-    font-weight: 600;
-    letter-spacing: -0.8px;
-    margin-bottom: 6px;
-    color: var(--ink);
-  }
-  .editor-sub {
-    font-size: 14px;
-    color: var(--ink-soft);
-  }
-  .editor-sub a { color: var(--accent); text-decoration: none; }
-  .editor-sub a:hover { text-decoration: underline; }
-
-  /* URL row */
-  .url-row {
-    display: flex;
-    gap: 0;
-    margin-bottom: 12px;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
-    background: #fff;
-    transition: border-color 0.2s;
-  }
-  .url-row:focus-within { border-color: var(--border-focus); }
-
-  .url-prefix {
-    font-family: var(--mono);
-    font-size: 13px;
-    background: var(--code-bg);
-    color: var(--ink-soft);
-    padding: 10px 12px;
-    border-right: 1.5px solid var(--border);
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-  }
-
-  .url-input {
-    flex: 1;
-    border: none;
-    outline: none;
-    font-family: var(--mono);
-    font-size: 13px;
-    padding: 10px 12px;
-    color: var(--ink);
-    background: transparent;
-  }
-  .url-input::placeholder { color: #B0B7C3; }
-
-  /* Edit key */
-  .key-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-  .key-label {
-    font-size: 12px;
-    color: var(--ink-soft);
-    font-weight: 500;
-    white-space: nowrap;
-  }
-  .key-input {
-    flex: 1;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    padding: 9px 12px;
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--ink);
-    outline: none;
-    background: #fff;
-    transition: border-color 0.2s;
-  }
-  .key-input:focus { border-color: var(--border-focus); }
-
-  /* Textarea toolbar */
-  .editor-toolbar {
-    display: flex;
-    gap: 4px;
-    padding: 6px 8px;
-    border: 1.5px solid var(--border);
-    border-bottom: none;
-    border-radius: 8px 8px 0 0;
-    background: var(--code-bg);
-    flex-wrap: wrap;
-  }
-
-  .tb-btn {
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 4px 9px;
-    border: 1px solid transparent;
-    border-radius: 5px;
-    background: none;
-    color: var(--ink-soft);
-    cursor: pointer;
-    transition: background 0.12s, color 0.12s, border-color 0.12s;
-    font-weight: 500;
-  }
-  .tb-btn:hover { background: #fff; border-color: var(--border); color: var(--ink); }
-  .tb-btn.active { background: #fff; border-color: var(--accent); color: var(--accent); }
-
-  .tb-sep { width: 1px; background: var(--border); margin: 3px 2px; }
-
-  .content-area {
-    position: relative;
-  }
-
-  #editor {
-    width: 100%;
-    min-height: 340px;
-    border: 1.5px solid var(--border);
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    padding: 16px;
-    font-family: var(--mono);
-    font-size: 14px;
-    line-height: 1.7;
-    color: var(--ink);
-    resize: vertical;
-    outline: none;
-    background: #fff;
-    transition: border-color 0.2s;
-    display: block;
-  }
-  #editor:focus { border-color: var(--border-focus); }
-
-  /* Preview pane */
-  #preview-pane {
-    display: none;
-    min-height: 340px;
-    border: 1.5px solid var(--border);
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    padding: 20px 24px;
-    background: #fff;
-    font-size: 15px;
-    line-height: 1.75;
-  }
-
-  /* Markdown preview styles */
-  #preview-pane h1, #preview-pane h2, #preview-pane h3 {
-    font-weight: 600; margin: 1.2em 0 0.4em; letter-spacing: -0.4px;
-  }
-  #preview-pane h1 { font-size: 1.75em; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-  #preview-pane h2 { font-size: 1.35em; }
-  #preview-pane h3 { font-size: 1.1em; }
-  #preview-pane p { margin: 0.7em 0; }
-  #preview-pane a { color: var(--accent); }
-  #preview-pane code {
-    font-family: var(--mono); font-size: 0.88em;
-    background: var(--code-bg); padding: 2px 6px; border-radius: 4px;
-  }
-  #preview-pane pre {
-    background: var(--code-bg); border-radius: 8px; padding: 14px 16px;
-    overflow-x: auto; margin: 1em 0;
-  }
-  #preview-pane pre code { background: none; padding: 0; }
-  #preview-pane blockquote {
-    border-left: 3px solid var(--accent); margin: 1em 0;
-    padding: 4px 0 4px 16px; color: var(--ink-soft);
-  }
-  #preview-pane ul, #preview-pane ol { padding-left: 1.5em; margin: 0.6em 0; }
-  #preview-pane li { margin: 0.25em 0; }
-  #preview-pane hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
-  #preview-pane table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 14px; }
-  #preview-pane th, #preview-pane td { border: 1px solid var(--border); padding: 7px 12px; text-align: left; }
-  #preview-pane th { background: var(--code-bg); font-weight: 600; }
-  #preview-pane img { max-width: 100%; border-radius: 6px; }
-
-  /* char counter */
-  .editor-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 8px;
-  }
-  .char-count { font-size: 12px; color: #B0B7C3; font-family: var(--mono); }
-
-  /* Submit */
-  .submit-row {
-    margin-top: 20px;
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .btn-primary {
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    padding: 10px 22px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    font-family: var(--sans);
-    transition: background 0.15s, transform 0.1s;
-  }
-  .btn-primary:hover { background: var(--accent-hover); }
-  .btn-primary:active { transform: scale(0.98); }
-  .btn-primary:disabled { background: #93C5FD; cursor: not-allowed; }
-
-  .btn-ghost {
-    background: none;
-    color: var(--ink-soft);
-    border: 1.5px solid var(--border);
-    padding: 9px 18px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    font-family: var(--sans);
-    transition: border-color 0.15s, color 0.15s;
-  }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-
-  /* ─── PASTE VIEW ─── */
-  .paste-shell {
-    max-width: 860px;
-    margin: 0 auto;
-    padding: 32px 24px 80px;
-    width: 100%;
-  }
-
-  .paste-topbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 20px;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  .paste-url-badge {
-    font-family: var(--mono);
-    font-size: 13px;
-    background: var(--code-bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px 12px;
-    color: var(--ink-soft);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .paste-url-badge strong { color: var(--ink); }
-
-  .paste-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .btn-sm {
-    font-size: 12px;
-    padding: 6px 12px;
-    border-radius: 6px;
-    border: 1.5px solid var(--border);
-    background: #fff;
-    color: var(--ink-soft);
-    cursor: pointer;
-    font-family: var(--sans);
-    font-weight: 500;
-    transition: border-color 0.15s, color 0.15s;
-  }
-  .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
-  .btn-sm.danger:hover { border-color: var(--danger); color: var(--danger); }
-
-  .paste-content {
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    padding: 28px 32px;
-    background: #fff;
-    min-height: 200px;
-    font-size: 15px;
-    line-height: 1.75;
-  }
-
-  /* Raw view */
-  #raw-content {
-    display: none;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    padding: 20px;
-    background: var(--code-bg);
-    font-family: var(--mono);
-    font-size: 13px;
-    line-height: 1.7;
-    white-space: pre-wrap;
-    word-break: break-all;
-    min-height: 200px;
-  }
-
-  /* ─── MODAL ─── */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.35);
-    z-index: 200;
-    align-items: center;
-    justify-content: center;
-  }
-  .modal-overlay.open { display: flex; }
-
-  .modal {
-    background: #fff;
-    border-radius: 12px;
-    padding: 28px;
-    width: 100%;
-    max-width: 400px;
-    margin: 16px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-  }
-  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
-  .modal p { font-size: 13px; color: var(--ink-soft); margin-bottom: 16px; line-height: 1.5; }
-
-  .modal-input {
-    width: 100%;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-family: var(--mono);
-    font-size: 13px;
-    outline: none;
-    margin-bottom: 16px;
-    transition: border-color 0.2s;
-  }
-  .modal-input:focus { border-color: var(--border-focus); }
-
-  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
-
-  /* ─── TOAST ─── */
-  .toast {
-    position: fixed;
-    bottom: 28px;
-    right: 28px;
-    background: var(--ink);
-    color: #fff;
-    font-size: 13px;
-    padding: 10px 16px;
-    border-radius: 8px;
-    z-index: 300;
-    opacity: 0;
-    transform: translateY(8px);
-    transition: opacity 0.2s, transform 0.2s;
-    pointer-events: none;
-    font-weight: 500;
-  }
-  .toast.show { opacity: 1; transform: translateY(0); }
-  .toast.success { background: var(--success); }
-  .toast.error { background: var(--danger); }
-
-  /* ─── FOOTER ─── */
-  footer {
-    margin-top: auto;
-    border-top: 1px solid var(--border);
-    padding: 18px 24px;
-    display: flex;
-    justify-content: center;
-    gap: 24px;
-    font-size: 12px;
-    color: #B0B7C3;
-    background: #fff;
-    flex-wrap: wrap;
-  }
-  footer a { color: #B0B7C3; text-decoration: none; }
-  footer a:hover { color: var(--ink-soft); }
-
-  /* ─── ALL PASTES LIST ─── */
-  .list-shell {
-    max-width: 860px;
-    margin: 0 auto;
-    padding: 40px 24px 80px;
-    width: 100%;
-  }
-  .list-title { font-size: 20px; font-weight: 600; margin-bottom: 20px; letter-spacing: -0.4px; }
-
-  .paste-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    background: #fff;
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: border-color 0.15s, box-shadow 0.15s;
-    text-decoration: none;
-    color: inherit;
-  }
-  .paste-row:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(37,99,235,0.08); }
-
-  .paste-row-url {
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--accent);
-    font-weight: 500;
-    min-width: 120px;
-  }
-  .paste-row-preview {
-    flex: 1;
-    font-size: 13px;
-    color: var(--ink-soft);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .paste-row-time {
-    font-size: 11px;
-    color: #B0B7C3;
-    font-family: var(--mono);
-    white-space: nowrap;
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--ink-soft);
-  }
-  .empty-state p { font-size: 14px; margin-top: 8px; }
-
-  /* Cursor blink on load */
-  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-  .cursor-hint { display: inline-block; width: 2px; height: 1em; background: var(--accent); animation: blink 1s step-end infinite; vertical-align: text-bottom; margin-left: 1px; }
-
-  @media (max-width: 600px) {
-    .editor-title { font-size: 22px; }
-    .paste-content { padding: 18px; }
-    .submit-row { flex-direction: column; align-items: flex-start; }
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>JSON PasteBin | إنشاء بيانات JSON فورية</title>
+    <!-- Inter Font & Tailwind -->
+    <link href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.18/index.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #0a0c10; color: #e6edf3; }
+        /* custom scroll and glass effect */
+        .glass-panel { background: rgba(22, 27, 34, 0.96); backdrop-filter: blur(2px); border: 1px solid #30363d; }
+        pre, code { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+        .fade-in { animation: fadeSlideUp 0.25s ease-out; }
+        @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .btn-primary { background: #2ea043; transition: all 0.2s ease; }
+        .btn-primary:hover { background: #3fb950; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(46, 160, 67, 0.2); }
+        .code-block { background: #0d1117; border-radius: 1rem; border: 1px solid #21262d; }
+        .toast-slide { transition: transform 0.3s ease, opacity 0.3s ease; }
+        textarea, input { background: #0d1117 !important; border: 1px solid #30363d !important; color: #f0f6fc !important; border-radius: 12px !important; transition: all 0.2s; }
+        textarea:focus, input:focus { border-color: #58a6ff !important; outline: none !important; box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2); }
+        .api-badge { background: #1f6feb20; border-left: 3px solid #2ea043; }
+        button:active { transform: scale(0.97); }
+    </style>
 </head>
-<body>
+<body class="min-h-screen flex flex-col">
 
-<nav>
-  <a class="logo" href="#" onclick="showView('home'); return false;">ren<span>try</span></a>
-  <div class="nav-links">
-    <button class="nav-link" onclick="showView('list')">My Pastes</button>
-    <button class="nav-link" onclick="showView('home')">+ New</button>
-  </div>
-</nav>
+    <!-- header modern -->
+    <header class="border-b border-[#21262d] bg-[#0d1117]/90 sticky top-0 z-30 backdrop-blur-sm">
+        <div class="container mx-auto px-5 py-4 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-bolt text-[#f78166] text-2xl"></i>
+                <span class="font-bold text-xl tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">JSON<span class="text-[#58a6ff]">.Paste</span></span>
+                <span class="hidden md:inline-block text-xs bg-[#21262d] px-2 py-1 rounded-full text-gray-300"><i class="fa-regular fa-clock"></i> API فوري</span>
+            </div>
+            <div class="flex gap-2">
+                <a href="#home" class="px-4 py-2 text-sm font-medium rounded-lg hover:bg-[#21262d] transition"><i class="fa-solid fa-pen-to-square"></i> إنشاء</a>
+                <a href="#dashboard" class="px-4 py-2 text-sm font-medium rounded-lg hover:bg-[#21262d] transition"><i class="fa-solid fa-table-list"></i> مسوداتي</a>
+            </div>
+        </div>
+    </header>
 
-<!-- ─── HOME VIEW ─── -->
-<div id="view-home" class="view active">
-  <div class="editor-shell">
-    <div class="editor-header">
-      <h1 class="editor-title">New paste<span class="cursor-hint" id="cursor"></span></h1>
-      <p class="editor-sub">Write in <a href="javascript:void(0)" onclick="insertMDGuide()">Markdown</a>. Share instantly. No account needed.</p>
+    <main id="app" class="container mx-auto px-4 py-10 flex-grow fade-in">
+        <div class="flex justify-center items-center py-20">
+            <div class="flex flex-col items-center gap-3">
+                <div class="w-8 h-8 border-3 border-[#30363d] border-t-[#58a6ff] rounded-full animate-spin"></div>
+                <p class="text-gray-500 text-sm">جاري التحميل ...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast system -->
+    <div id="toastRoot" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+        <div id="toastMsg" class="pointer-events-auto bg-[#161b22] border border-[#30363d] rounded-xl shadow-2xl px-5 py-3 flex items-center gap-3 transition-all duration-300 translate-y-10 opacity-0 backdrop-blur-md">
+            <i id="toastIcon" class="fa-regular fa-circle-check text-emerald-400"></i>
+            <span id="toastText" class="text-sm font-medium">تم النسخ</span>
+        </div>
     </div>
 
-    <!-- URL slug -->
-    <div class="url-row">
-      <span class="url-prefix" id="base-url-prefix">rentry.co/</span>
-      <input class="url-input" id="slug-input" type="text" maxlength="40" placeholder="custom-url (optional)" autocomplete="off" spellcheck="false">
-    </div>
-
-    <!-- Edit key -->
-    <div class="key-row">
-      <span class="key-label">Edit key</span>
-      <input class="key-input" id="key-input" type="text" maxlength="60" placeholder="Set a password to edit later (optional)" autocomplete="off">
-    </div>
-
-    <!-- Toolbar -->
-    <div class="editor-toolbar">
-      <button class="tb-btn" onclick="wrap('**','**')" title="Bold"><b>B</b></button>
-      <button class="tb-btn" onclick="wrap('*','*')" title="Italic"><i>I</i></button>
-      <button class="tb-btn" onclick="wrap('~~','~~')" title="Strikethrough"><s>S</s></button>
-      <button class="tb-btn" onclick="wrap('`','`')" title="Inline code">code</button>
-      <div class="tb-sep"></div>
-      <button class="tb-btn" onclick="insertLine('# ')" title="H1">H1</button>
-      <button class="tb-btn" onclick="insertLine('## ')" title="H2">H2</button>
-      <button class="tb-btn" onclick="insertLine('### ')" title="H3">H3</button>
-      <div class="tb-sep"></div>
-      <button class="tb-btn" onclick="insertLine('- ')" title="List">— list</button>
-      <button class="tb-btn" onclick="insertLine('> ')" title="Quote">❝ quote</button>
-      <button class="tb-btn" onclick="wrap('\`\`\`\n','\n\`\`\`')" title="Code block">{  }</button>
-      <div class="tb-sep"></div>
-      <button class="tb-btn" id="preview-toggle-btn" onclick="togglePreview()">⟨ preview</button>
-    </div>
-
-    <div class="content-area">
-      <textarea id="editor" placeholder="Start writing… Markdown is supported." oninput="onEditorInput()" spellcheck="true"></textarea>
-      <div id="preview-pane"></div>
-    </div>
-
-    <div class="editor-meta">
-      <span class="char-count" id="char-count">0 chars</span>
-    </div>
-
-    <div class="submit-row">
-      <button class="btn-primary" id="publish-btn" onclick="publishPaste()">Publish</button>
-      <button class="btn-ghost" onclick="clearEditor()">Clear</button>
-    </div>
-  </div>
-</div>
-
-<!-- ─── PASTE VIEW ─── -->
-<div id="view-paste" class="view">
-  <div class="paste-shell">
-    <div class="paste-topbar">
-      <div class="paste-url-badge">
-        rentry.co/<strong id="paste-slug-display"></strong>
-        <button class="btn-sm" style="border:none;padding:2px 6px;font-size:11px;" onclick="copyPasteUrl()" title="Copy link">⎘</button>
-      </div>
-      <div class="paste-actions">
-        <button class="btn-sm" id="raw-toggle-btn" onclick="toggleRaw()">Raw</button>
-        <button class="btn-sm" onclick="editPaste()">Edit</button>
-        <button class="btn-sm danger" onclick="openDeleteModal()">Delete</button>
-        <button class="btn-sm" onclick="showView('home')">+ New</button>
-      </div>
-    </div>
-
-    <div class="paste-content" id="paste-rendered"></div>
-    <pre id="raw-content"></pre>
-  </div>
-</div>
-
-<!-- ─── LIST VIEW ─── -->
-<div id="view-list" class="view">
-  <div class="list-shell">
-    <div class="list-title">My pastes</div>
-    <div id="pastes-list"></div>
-  </div>
-</div>
-
-<!-- ─── EDIT VIEW ─── -->
-<div id="view-edit" class="view">
-  <div class="editor-shell">
-    <div class="editor-header">
-      <h1 class="editor-title">Edit paste</h1>
-      <p class="editor-sub" id="edit-url-hint"></p>
-    </div>
-    <div class="editor-toolbar">
-      <button class="tb-btn" onclick="wrapEdit('**','**')"><b>B</b></button>
-      <button class="tb-btn" onclick="wrapEdit('*','*')"><i>I</i></button>
-      <button class="tb-btn" onclick="wrapEdit('~~','~~')"><s>S</s></button>
-      <button class="tb-btn" onclick="wrapEdit('`','`')">code</button>
-      <div class="tb-sep"></div>
-      <button class="tb-btn" id="edit-preview-btn" onclick="toggleEditPreview()">⟨ preview</button>
-    </div>
-    <textarea id="edit-editor" style="width:100%;min-height:340px;border:1.5px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:16px;font-family:var(--mono);font-size:14px;line-height:1.7;color:var(--ink);resize:vertical;outline:none;background:#fff;" oninput="onEditInput()"></textarea>
-    <div id="edit-preview-pane" style="display:none;min-height:340px;border:1.5px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:20px 24px;background:#fff;font-size:15px;line-height:1.75;"></div>
-    <div class="submit-row">
-      <button class="btn-primary" onclick="saveEdit()">Save changes</button>
-      <button class="btn-ghost" onclick="cancelEdit()">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<!-- ─── MODALS ─── -->
-<!-- Delete modal -->
-<div class="modal-overlay" id="delete-modal">
-  <div class="modal">
-    <h3>Delete paste?</h3>
-    <p>Enter your edit key to confirm deletion. This cannot be undone.</p>
-    <input class="modal-input" id="delete-key-input" type="password" placeholder="Edit key">
-    <div class="modal-actions">
-      <button class="btn-ghost" onclick="closeModal('delete-modal')">Cancel</button>
-      <button class="btn-primary" style="background:var(--danger)" onclick="confirmDelete()">Delete</button>
-    </div>
-  </div>
-</div>
-
-<!-- Edit key modal -->
-<div class="modal-overlay" id="edit-key-modal">
-  <div class="modal">
-    <h3>Enter edit key</h3>
-    <p>This paste is protected. Enter the edit key to continue.</p>
-    <input class="modal-input" id="edit-key-modal-input" type="password" placeholder="Edit key">
-    <div class="modal-actions">
-      <button class="btn-ghost" onclick="closeModal('edit-key-modal')">Cancel</button>
-      <button class="btn-primary" onclick="confirmEditKey()">Continue</button>
-    </div>
-  </div>
-</div>
-
-<!-- Toast -->
-<div class="toast" id="toast"></div>
-
-<footer>
-  <a href="javascript:void(0)">About</a>
-  <a href="javascript:void(0)">Markdown guide</a>
-  <a href="javascript:void(0)">API</a>
-  <span>Made with ♥ — open source</span>
-</footer>
-
-<script>
-/* ── Storage ── */
-const DB_KEY = 'rentry_pastes';
-
-function getDB() {
-  try { return JSON.parse(localStorage.getItem(DB_KEY) || '{}'); }
-  catch { return {}; }
-}
-function saveDB(db) {
-  localStorage.setItem(DB_KEY, JSON.stringify(db));
-}
-
-/* ── Markdown renderer (no deps) ── */
-function renderMD(text) {
-  if (!text) return '';
-  let html = text
-    // escape
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    // fenced code blocks
-    .replace(/```([^`]*?)```/gs, (_,c)=>`<pre><code>${c.trim()}</code></pre>`)
-    // headings
-    .replace(/^#{6} (.+)$/gm,'<h6>$1</h6>')
-    .replace(/^#{5} (.+)$/gm,'<h5>$1</h5>')
-    .replace(/^#{4} (.+)$/gm,'<h4>$1</h4>')
-    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
-    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
-    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
-    // hr
-    .replace(/^---+$/gm,'<hr>')
-    // blockquote
-    .replace(/^&gt; (.+)$/gm,'<blockquote>$1</blockquote>')
-    // bold/italic
-    .replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g,'<em>$1</em>')
-    .replace(/~~(.+?)~~/g,'<del>$1</del>')
-    // inline code
-    .replace(/`([^`]+)`/g,'<code>$1</code>')
-    // links & images
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g,'<img src="$2" alt="$1">')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
-    // unordered list
-    .replace(/(^- .+$(\n^- .+$)*)/gm, m=>'<ul>'+m.split('\n').map(l=>`<li>${l.slice(2)}</li>`).join('')+'</ul>')
-    // ordered list
-    .replace(/(^\d+\. .+$(\n^\d+\. .+$)*)/gm, m=>'<ol>'+m.split('\n').map(l=>`<li>${l.replace(/^\d+\. /,'')}</li>`).join('')+'</ol>')
-    // paragraphs
-    .split(/\n\n+/)
-    .map(block => {
-      if (/^<(h[1-6]|ul|ol|pre|hr|blockquote)/.test(block)) return block;
-      return `<p>${block.replace(/\n/g,'<br>')}</p>`;
-    })
-    .join('\n');
-  return html;
-}
-
-/* ── Views ── */
-let currentSlug = null;
-let editingSlug = null;
-let showingRaw = false;
-let showingPreview = false;
-let editShowingPreview = false;
-
-function showView(name) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('view-'+name).classList.add('active');
-  if (name === 'list') renderList();
-  if (name === 'home') {
-    // stop cursor blink after 3s
-    setTimeout(()=>{ const c=document.getElementById('cursor'); if(c) c.style.display='none'; }, 3000);
-  }
-}
-
-/* ── Editor helpers ── */
-function onEditorInput() {
-  const v = document.getElementById('editor').value;
-  document.getElementById('char-count').textContent = v.length.toLocaleString() + ' chars';
-  if (showingPreview) document.getElementById('preview-pane').innerHTML = renderMD(v);
-}
-
-function togglePreview() {
-  showingPreview = !showingPreview;
-  const ta = document.getElementById('editor');
-  const pane = document.getElementById('preview-pane');
-  const btn = document.getElementById('preview-toggle-btn');
-  if (showingPreview) {
-    pane.innerHTML = renderMD(ta.value);
-    pane.style.display = 'block';
-    ta.style.display = 'none';
-    btn.classList.add('active');
-    btn.textContent = '✎ edit';
-  } else {
-    pane.style.display = 'none';
-    ta.style.display = 'block';
-    btn.classList.remove('active');
-    btn.textContent = '⟨ preview';
-  }
-}
-
-function toggleEditPreview() {
-  editShowingPreview = !editShowingPreview;
-  const ta = document.getElementById('edit-editor');
-  const pane = document.getElementById('edit-preview-pane');
-  const btn = document.getElementById('edit-preview-btn');
-  if (editShowingPreview) {
-    pane.innerHTML = renderMD(ta.value);
-    pane.style.display = 'block';
-    ta.style.display = 'none';
-    btn.classList.add('active');
-    btn.textContent = '✎ edit';
-  } else {
-    pane.style.display = 'none';
-    ta.style.display = 'block';
-    btn.classList.remove('active');
-    btn.textContent = '⟨ preview';
-  }
-}
-
-function onEditInput() {
-  if (editShowingPreview) {
-    document.getElementById('edit-preview-pane').innerHTML = renderMD(document.getElementById('edit-editor').value);
-  }
-}
-
-function wrap(before, after) {
-  const ta = document.getElementById('editor');
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  const sel = ta.value.slice(s, e) || 'text';
-  ta.value = ta.value.slice(0, s) + before + sel + after + ta.value.slice(e);
-  ta.focus();
-  ta.selectionStart = s + before.length;
-  ta.selectionEnd = s + before.length + sel.length;
-  onEditorInput();
-}
-function wrapEdit(before, after) {
-  const ta = document.getElementById('edit-editor');
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  const sel = ta.value.slice(s, e) || 'text';
-  ta.value = ta.value.slice(0, s) + before + sel + after + ta.value.slice(e);
-  ta.focus();
-  ta.selectionStart = s + before.length;
-  ta.selectionEnd = s + before.length + sel.length;
-}
-
-function insertLine(prefix) {
-  const ta = document.getElementById('editor');
-  const s = ta.selectionStart;
-  const lineStart = ta.value.lastIndexOf('\n', s-1)+1;
-  ta.value = ta.value.slice(0,lineStart) + prefix + ta.value.slice(lineStart);
-  ta.focus();
-  onEditorInput();
-}
-
-function clearEditor() {
-  document.getElementById('editor').value = '';
-  document.getElementById('slug-input').value = '';
-  document.getElementById('key-input').value = '';
-  document.getElementById('char-count').textContent = '0 chars';
-  if (showingPreview) togglePreview();
-}
-
-function insertMDGuide() {
-  document.getElementById('editor').value = `# Markdown Guide
-
-**Bold** and *italic* text
-
-## Lists
-- Item one
-- Item two
-- Item three
-
-## Code
-Inline \`code\` or a block:
-
-\`\`\`
-function hello() {
-  console.log("Hello, world!");
-}
-\`\`\`
-
-## Quotes
-> "The best way to predict the future is to invent it."
-
-## Links
-[Rentry](https://rentry.co)
-
----
-*Happy writing!*
-`;
-  onEditorInput();
-}
-
-/* ── Publish ── */
-function generateSlug() {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  return Array.from({length:8}, ()=>chars[Math.floor(Math.random()*chars.length)]).join('');
-}
-
-function publishPaste() {
-  const content = document.getElementById('editor').value.trim();
-  if (!content) { showToast('Write something first!', 'error'); return; }
-
-  let slug = document.getElementById('slug-input').value.trim()
-    .toLowerCase().replace(/[^a-z0-9-_]/g,'').slice(0,40);
-  if (!slug) slug = generateSlug();
-
-  const key = document.getElementById('key-input').value.trim();
-  const db = getDB();
-
-  if (db[slug]) {
-    showToast('URL taken — try another', 'error');
-    document.getElementById('slug-input').focus();
-    return;
-  }
-
-  db[slug] = { content, key, createdAt: Date.now() };
-  saveDB(db);
-
-  showToast('Published!', 'success');
-  clearEditor();
-  openPaste(slug);
-}
-
-/* ── Paste view ── */
-function openPaste(slug) {
-  const db = getDB();
-  const paste = db[slug];
-  if (!paste) { showToast('Paste not found', 'error'); showView('home'); return; }
-
-  currentSlug = slug;
-  showingRaw = false;
-
-  document.getElementById('paste-slug-display').textContent = slug;
-  document.getElementById('paste-rendered').innerHTML = renderMD(paste.content);
-  document.getElementById('paste-rendered').style.display = 'block';
-  document.getElementById('raw-content').textContent = paste.content;
-  document.getElementById('raw-content').style.display = 'none';
-  document.getElementById('raw-toggle-btn').textContent = 'Raw';
-
-  showView('paste');
-}
-
-function toggleRaw() {
-  showingRaw = !showingRaw;
-  document.getElementById('paste-rendered').style.display = showingRaw ? 'none' : 'block';
-  document.getElementById('raw-content').style.display = showingRaw ? 'block' : 'none';
-  document.getElementById('raw-toggle-btn').textContent = showingRaw ? 'Rendered' : 'Raw';
-}
-
-function copyPasteUrl() {
-  const url = `${location.href.split('?')[0]}?p=${currentSlug}`;
-  navigator.clipboard.writeText(url).then(()=>showToast('Link copied!')).catch(()=>{
-    prompt('Copy this link:', url);
-  });
-}
-
-/* ── Edit ── */
-function editPaste() {
-  const db = getDB();
-  const paste = db[currentSlug];
-  if (paste.key) {
-    openModal('edit-key-modal');
-  } else {
-    startEdit(currentSlug);
-  }
-}
-
-function confirmEditKey() {
-  const input = document.getElementById('edit-key-modal-input').value.trim();
-  const db = getDB();
-  const paste = db[currentSlug];
-  if (paste.key && paste.key !== input) {
-    showToast('Wrong edit key', 'error');
-    return;
-  }
-  closeModal('edit-key-modal');
-  document.getElementById('edit-key-modal-input').value = '';
-  startEdit(currentSlug);
-}
-
-function startEdit(slug) {
-  const db = getDB();
-  editingSlug = slug;
-  document.getElementById('edit-editor').value = db[slug].content;
-  document.getElementById('edit-url-hint').textContent = `Editing rentry.co/${slug}`;
-  if (editShowingPreview) toggleEditPreview();
-  showView('edit');
-}
-
-function saveEdit() {
-  const content = document.getElementById('edit-editor').value.trim();
-  if (!content) { showToast('Content cannot be empty', 'error'); return; }
-  const db = getDB();
-  db[editingSlug].content = content;
-  db[editingSlug].updatedAt = Date.now();
-  saveDB(db);
-  showToast('Saved!', 'success');
-  openPaste(editingSlug);
-}
-
-function cancelEdit() {
-  openPaste(currentSlug || editingSlug);
-}
-
-/* ── Delete ── */
-function openDeleteModal() { openModal('delete-modal'); }
-
-function confirmDelete() {
-  const input = document.getElementById('delete-key-input').value.trim();
-  const db = getDB();
-  const paste = db[currentSlug];
-  if (paste.key && paste.key !== input) {
-    showToast('Wrong edit key', 'error');
-    return;
-  }
-  delete db[currentSlug];
-  saveDB(db);
-  closeModal('delete-modal');
-  document.getElementById('delete-key-input').value = '';
-  showToast('Paste deleted');
-  currentSlug = null;
-  showView('home');
-}
-
-/* ── List ── */
-function renderList() {
-  const db = getDB();
-  const slugs = Object.keys(db).sort((a,b)=>(db[b].createdAt||0)-(db[a].createdAt||0));
-  const el = document.getElementById('pastes-list');
-  if (!slugs.length) {
-    el.innerHTML = `<div class="empty-state">
-      <div style="font-size:32px">📋</div>
-      <p>No pastes yet. <a href="javascript:void(0)" onclick="showView('home')" style="color:var(--accent)">Create one!</a></p>
-    </div>`;
-    return;
-  }
-  el.innerHTML = slugs.map(slug => {
-    const p = db[slug];
-    const preview = p.content.replace(/[#*`>\n]/g,' ').slice(0,80);
-    const d = new Date(p.createdAt);
-    const when = d.toLocaleDateString();
-    return `<div class="paste-row" onclick="openPaste('${slug}')">
-      <span class="paste-row-url">${slug}</span>
-      <span class="paste-row-preview">${preview}</span>
-      <span class="paste-row-time">${when}</span>
-    </div>`;
-  }).join('');
-}
-
-/* ── Modal helpers ── */
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
-document.querySelectorAll('.modal-overlay').forEach(m => {
-  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
-});
-
-/* ── Toast ── */
-let toastTimer;
-function showToast(msg, type='') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast show' + (type ? ' '+type : '');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>{ t.className='toast'; }, 2600);
-}
-
-/* ── URL routing (share links) ── */
-const params = new URLSearchParams(location.search);
-const slugParam = params.get('p');
-if (slugParam) {
-  const db = getDB();
-  if (db[slugParam]) { openPaste(slugParam); }
-  else {
-    showToast('Paste not found or expired', 'error');
-  }
-}
-
-/* ── Stop cursor after 3s ── */
-setTimeout(()=>{ const c=document.getElementById('cursor'); if(c) c.style.display='none'; }, 3000);
-
-/* ── Set base URL ── */
-document.getElementById('base-url-prefix').textContent = location.hostname + '/';
-</script>
+    <script>
+        // =====================================================
+        // JSON PASTE API -  إنشاء بيانات JSON مباشرة عند الضغط
+        // لا يحتاج إلى خادم، يعمل محلياً، يدعم Base64 + URL parameters
+        // يوفر API بنقرة واحدة: JSON + Raw + View
+        // =====================================================
+        
+        const App = {
+            // ------------------- Base64 مع دعم اليونيكود ------------------
+            encode(str) {
+                try {
+                    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode('0x' + p1)));
+                } catch(e) {
+                    return btoa(str);
+                }
+            },
+            decode(b64) {
+                try {
+                    const decoded = atob(b64);
+                    return decodeURIComponent(decoded.split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+                } catch(e) {
+                    try { return atob(b64); } catch(e2) { return ''; }
+                }
+            },
+            
+            // -------- أدوات مساعدة ----------
+            showToast(message, type = 'success') {
+                const toastEl = document.getElementById('toastMsg');
+                const iconSpan = document.getElementById('toastIcon');
+                const textSpan = document.getElementById('toastText');
+                if (!toastEl) return;
+                textSpan.innerText = message;
+                if (type === 'error') {
+                    iconSpan.className = 'fa-regular fa-circle-xmark text-red-400';
+                } else {
+                    iconSpan.className = 'fa-regular fa-circle-check text-emerald-400';
+                }
+                toastEl.classList.remove('translate-y-10', 'opacity-0');
+                toastEl.classList.add('translate-y-0', 'opacity-100');
+                setTimeout(() => {
+                    toastEl.classList.add('translate-y-10', 'opacity-0');
+                    toastEl.classList.remove('translate-y-0', 'opacity-100');
+                }, 2800);
+            },
+            
+            copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    this.showToast('تم النسخ ✅', 'success');
+                }).catch(() => {
+                    prompt('انسخ الرابط يدويًا:', text);
+                    this.showToast('انسخ الرابط', 'info');
+                });
+            },
+            
+            getBaseUrl() {
+                return window.location.origin + window.location.pathname;
+            },
+            
+            // ---------- تخزين القوائم في localStorage ----------
+            savePasteMeta(slug, encodedContent) {
+                const pastes = JSON.parse(localStorage.getItem('json_pastes_list') || '[]');
+                const existingIndex = pastes.findIndex(p => p.slug === slug);
+                const newEntry = {
+                    slug: slug,
+                    encoded: encodedContent,
+                    createdAt: new Date().toISOString(),
+                };
+                if (existingIndex >= 0) pastes[existingIndex] = newEntry;
+                else pastes.push(newEntry);
+                localStorage.setItem('json_pastes_list', JSON.stringify(pastes));
+                return newEntry;
+            },
+            
+            deletePasteBySlug(slug) {
+                let pastes = JSON.parse(localStorage.getItem('json_pastes_list') || '[]');
+                pastes = pastes.filter(p => p.slug !== slug);
+                localStorage.setItem('json_pastes_list', JSON.stringify(pastes));
+                this.showToast(`تم حذف "${slug}"`, 'success');
+                this.renderCurrentRoute();
+            },
+            
+            getAllPastes() {
+                return JSON.parse(localStorage.getItem('json_pastes_list') || '[]');
+            },
+            
+            // ---------- إنشاء روابط API المختلفة ----------
+            getJsonApiUrl(slug, rawContent) {
+                const dataParam = encodeURIComponent(this.encode(rawContent));
+                return `${this.getBaseUrl()}?api=json&slug=${slug}&data=${dataParam}`;
+            },
+            getRawApiUrl(slug, rawContent) {
+                const dataParam = encodeURIComponent(this.encode(rawContent));
+                return `${this.getBaseUrl()}?api=raw&slug=${slug}&data=${dataParam}`;
+            },
+            getViewUrl(slug, rawContent) {
+                const dataParam = encodeURIComponent(this.encode(rawContent));
+                return `${this.getBaseUrl()}?view&slug=${slug}&data=${dataParam}`;
+            },
+            
+            // ---------- المعالج السحري: API JSON المباشر بدون واجهة ----------
+            handleDirectApi() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const apiType = urlParams.get('api');
+                const slug = urlParams.get('slug');
+                const encodedData = urlParams.get('data');
+                
+                if (!apiType || !slug || !encodedData) return false;
+                
+                try {
+                    const decodedContent = this.decode(decodeURIComponent(encodedData));
+                    // JSON API endpoint -> يخرج JSON نقي
+                    if (apiType === 'json') {
+                        this.renderPureJsonResponse(slug, decodedContent);
+                        return true;
+                    }
+                    // Raw endpoint -> نص خام
+                    if (apiType === 'raw') {
+                        this.renderRawText(decodedContent);
+                        return true;
+                    }
+                } catch (err) {
+                    if (apiType === 'json') {
+                        document.body.innerHTML = `<pre style="color:#f85149; background:#0d1117; padding:2rem;">{"error": "invalid data", "message": "فشل فك التشفير"}</pre>`;
+                        return true;
+                    }
+                    if (apiType === 'raw') {
+                        document.body.innerText = "Error: corrupted data";
+                        return true;
+                    }
+                }
+                return false;
+            },
+            
+            renderPureJsonResponse(slug, content) {
+                // إزالة كل شيء وعرض JSON مباشرة
+                document.head.innerHTML = '<meta charset="UTF-8"><title>JSON API - ' + slug + '</title>';
+                document.body.innerHTML = '';
+                document.body.style.background = '#0d1117';
+                document.body.style.margin = '0';
+                document.body.style.padding = '1.5rem';
+                const responseObject = {
+                    status: "success",
+                    slug: slug,
+                    content: content,
+                    timestamp: new Date().toISOString(),
+                    api_version: "1.0",
+                    raw_url: this.getBaseUrl() + `?api=raw&slug=${slug}&data=${encodeURIComponent(this.encode(content))}`,
+                    view_url: this.getBaseUrl() + `?view&slug=${slug}&data=${encodeURIComponent(this.encode(content))}`
+                };
+                const pre = document.createElement('pre');
+                pre.style.cssText = 'background:#0a0c10; color:#a5d6ff; padding:24px; border-radius:20px; font-family: monospace; font-size:14px; white-space:pre-wrap; word-break:break-word; max-width:100%; margin:0; border:1px solid #30363d;';
+                pre.textContent = JSON.stringify(responseObject, null, 2);
+                document.body.appendChild(pre);
+            },
+            
+            renderRawText(content) {
+                document.head.innerHTML = '<meta charset="UTF-8"><title>Raw Paste</title>';
+                document.body.innerHTML = '';
+                document.body.style.background = '#0a0c10';
+                document.body.style.padding = '2rem';
+                const pre = document.createElement('pre');
+                pre.style.cssText = 'color:#e6edf3; font-family: monospace; font-size:14px; white-space:pre-wrap; background:#0d1117; padding:20px; border-radius:16px; margin:0;';
+                pre.textContent = content;
+                document.body.appendChild(pre);
+            },
+            
+            // ---------- إنشاء لصقة جديدة (JSON API فوري) ----------
+            handleCreatePaste(slug, content) {
+                if (!slug.match(/^[a-zA-Z0-9_-]{3,50}$/)) {
+                    this.showToast('الاسم (slug) يجب أن يكون 3-50 حرفاً (a-z,0-9,_,-)', 'error');
+                    return false;
+                }
+                if (!content.trim()) {
+                    this.showToast('المحتوى لا يمكن أن يكون فارغاً', 'error');
+                    return false;
+                }
+                const encoded = this.encode(content);
+                this.savePasteMeta(slug, encoded);
+                // بعد الإنشاء ننتقل إلى صفحة العرض مع عرض روابط JSON فورية
+                const viewUrl = this.getViewUrl(slug, content);
+                window.location.href = viewUrl;
+                return true;
+            },
+            
+            // ---------- واجهة العرض (View) + إظهار روابط JSON مباشرة ----------
+            renderViewScreen(container, slug, encodedData) {
+                if (!slug || !encodedData) {
+                    container.innerHTML = `<div class="text-center py-16"><i class="fa-regular fa-file-lines text-5xl text-gray-600"></i><p class="mt-3 text-gray-400">بيانات غير صالحة أو مفقودة</p><a href="${this.getBaseUrl()}" class="inline-block mt-4 text-[#58a6ff] underline">إنشاء لصقة جديدة</a></div>`;
+                    return;
+                }
+                let content;
+                try {
+                    content = this.decode(decodeURIComponent(encodedData));
+                } catch(e) {
+                    container.innerHTML = `<div class="text-red-400 text-center p-10">فشل فك تشفير المحتوى</div>`;
+                    return;
+                }
+                
+                const jsonUrl = this.getJsonApiUrl(slug, content);
+                const rawUrl = this.getRawApiUrl(slug, content);
+                const viewUrl = this.getViewUrl(slug, content);
+                
+                container.innerHTML = `
+                    <div class="max-w-5xl mx-auto space-y-6 fade-in">
+                        <!-- رأس الباستا -->
+                        <div class="glass-panel rounded-2xl p-6 shadow-md">
+                            <div class="flex flex-wrap justify-between items-start gap-4">
+                                <div>
+                                    <div class="flex items-center gap-2 text-[#58a6ff] text-2xl font-mono font-bold">
+                                        <i class="fa-solid fa-link"></i> /${escapeHtml(slug)}
+                                    </div>
+                                    <p class="text-gray-400 text-sm mt-1"><i class="fa-regular fa-calendar"></i> تم الإنشاء الآن · رابط شامل</p>
+                                </div>
+                                <div class="flex gap-2 flex-wrap">
+                                    <button id="copyJsonBtn" class="bg-[#1f6feb] hover:bg-[#388bfd] text-white px-5 py-2 rounded-xl text-sm font-bold transition shadow-md"><i class="fa-solid fa-code"></i> نسخ JSON URL</button>
+                                    <button id="copyRawBtn" class="bg-[#30363d] hover:bg-[#3d444d] text-white px-5 py-2 rounded-xl text-sm font-bold transition"><i class="fa-solid fa-file-lines"></i> نسخ Raw URL</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- محتوى النص -->
+                        <div class="glass-panel rounded-2xl overflow-hidden">
+                            <div class="bg-[#0d1117] px-5 py-3 border-b border-[#30363d] flex gap-3">
+                                <i class="fa-regular fa-file-code"></i> <span class="text-sm font-mono">المحتوى الخام</span>
+                            </div>
+                            <pre class="p-6 text-sm font-mono overflow-x-auto leading-relaxed bg-[#0a0c10] text-[#e6edf3]" style="white-space: pre-wrap;">${escapeHtml(content)}</pre>
+                        </div>
+                        
+                        <!-- قسم API المباشر - JSON عند الضغط على أي رابط -->
+                        <div class="glass-panel rounded-2xl p-6 border-l-4 border-l-[#2ea043]">
+                            <h3 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-cloud-arrow-up text-[#58a6ff]"></i> واجهة JSON API المباشرة</h3>
+                            <p class="text-gray-400 text-sm mb-5">هذه الروابط تعرض JSON فوري عند فتحها أو الضغط عليها — يمكنك استخدامها في أي تطبيق.</p>
+                            
+                            <div class="space-y-4">
+                                <div class="bg-[#161b22] rounded-xl p-4 api-badge">
+                                    <div class="flex justify-between items-start flex-wrap gap-2">
+                                        <div><i class="fa-solid fa-brackets-curly text-green-400"></i> <span class="font-mono text-xs text-gray-300">نقطة النهاية JSON (metadata + المحتوى)</span></div>
+                                        <button class="json-copy-btn text-xs bg-[#21262d] hover:bg-[#30363d] px-3 py-1.5 rounded-lg transition" data-url="${jsonUrl}"><i class="fa-regular fa-copy"></i> نسخ الرابط</button>
+                                    </div>
+                                    <code class="block text-xs text-[#a5d6ff] break-all mt-2 bg-[#0d1117] p-2 rounded-lg">${escapeHtml(jsonUrl)}</code>
+                                    <div class="mt-3 flex gap-2">
+                                        <a href="${jsonUrl}" target="_blank" class="inline-flex items-center gap-1 text-[#58a6ff] text-sm hover:underline"><i class="fa-solid fa-arrow-up-right-from-square"></i> فتح JSON مباشرة</a>
+                                        <span class="text-gray-500">|</span>
+                                        <a href="${rawUrl}" target="_blank" class="inline-flex items-center gap-1 text-[#a5d6ff] text-sm hover:underline"><i class="fa-regular fa-file"></i> Raw text</a>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-[#0d1117] rounded-xl p-4 border border-[#21262d]">
+                                    <p class="text-xs font-bold text-gray-400 mb-2"><i class="fa-brands fa-js"></i> مثال JavaScript (استدعاء JSON فوري)</p>
+                                    <pre class="text-xs bg-black/40 p-3 rounded-lg overflow-x-auto text-[#d2a8ff]"><code>fetch("${jsonUrl}")
+  .then(res => res.json())
+  .then(data => console.log("المحتوى:", data.content));</code></pre>
+                                </div>
+                                
+                                <div class="flex gap-3 pt-2">
+                                    <button id="testJsonBtn" class="flex-1 bg-[#238636] hover:bg-[#2ea043] py-2.5 rounded-xl font-bold transition flex items-center justify-center gap-2"><i class="fa-solid fa-flask"></i> تجربة JSON API (فتح في نافذة)</button>
+                                    <button id="shareAllBtn" class="flex-1 bg-[#1f6feb] hover:bg-[#388bfd] py-2.5 rounded-xl transition flex items-center justify-center gap-2"><i class="fa-regular fa-share-from-square"></i> مشاركة الرابط الرئيسي</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center text-xs text-gray-500 border-t border-[#21262d] pt-6 mt-4">
+                            <i class="fa-regular fa-message"></i> جميع البيانات مشفرة داخل الرابط — يمكنك حفظ الرابط أو إرساله وستعمل واجهة JSON فوراً.
+                        </div>
+                    </div>
+                `;
+                
+                // ربط الأزرار
+                document.getElementById('copyJsonBtn')?.addEventListener('click', () => { this.copyToClipboard(jsonUrl); });
+                document.getElementById('copyRawBtn')?.addEventListener('click', () => { this.copyToClipboard(rawUrl); });
+                document.getElementById('testJsonBtn')?.addEventListener('click', () => { window.open(jsonUrl, '_blank'); });
+                document.getElementById('shareAllBtn')?.addEventListener('click', () => { this.copyToClipboard(viewUrl); });
+                document.querySelectorAll('.json-copy-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const url = btn.getAttribute('data-url');
+                        if(url) this.copyToClipboard(url);
+                    });
+                });
+            },
+            
+            // ---------- الصفحة الرئيسية: إنشاء Paste والحصول على JSON API بنقرة واحدة ----------
+            renderHome(container) {
+                container.innerHTML = `
+                    <div class="max-w-3xl mx-auto glass-panel rounded-2xl p-7 md:p-9 shadow-2xl">
+                        <div class="text-center mb-6">
+                            <i class="fa-solid fa-bolt text-4xl text-[#f78166]"></i>
+                            <h1 class="text-3xl md:text-4xl font-extrabold mt-2 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">JSON API فوري</h1>
+                            <p class="text-gray-400 mt-2">أدخل المحتوى، اضغط على "إنشاء واستخراج JSON" — تحصل على رابط JSON مباشر يعرض البيانات بصيغة json</p>
+                        </div>
+                        
+                        <form id="mainCreateForm" class="space-y-6">
+                            <div>
+                                <label class="block text-sm font-semibold mb-2"><i class="fa-regular fa-keyboard"></i> المعرف (Slug) :</label>
+                                <input type="text" id="slugInput" required pattern="[a-zA-Z0-9_-]{3,50}" 
+                                    placeholder="مثال: my-config-v1 أو api-docs" 
+                                    class="w-full px-5 py-3 rounded-xl font-mono">
+                                <p class="text-[11px] text-gray-500 mt-1">أحرف إنجليزية، أرقام، شرطة سفلية فقط (3-50)</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold mb-2"><i class="fa-regular fa-rectangle-ad"></i> المحتوى (نص أو JSON أو كود):</label>
+                                <textarea id="pasteContent" rows="12" class="w-full px-5 py-3 rounded-xl font-mono text-sm" placeholder='{"name": "مثال", "value": "يمكنك وضع أي نص أو JSON"}&#10;أو مجرد نص عادي&#10;سيتم توفيره عبر API فوري'></textarea>
+                            </div>
+                            <button type="submit" id="createBtnAction" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-lg flex justify-center items-center gap-3 shadow-lg">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> إنشاء و الحصول على JSON API مباشر
+                            </button>
+                        </form>
+                        <div class="mt-6 text-xs text-center text-gray-500 bg-[#0d1117] rounded-xl p-3">
+                            <i class="fa-regular fa-lightbulb"></i> عند الضغط، سيتم إنشاء رابط يحتوي على API JSON جاهز — يمكنك استخدامه فوراً في أي برنامج أو curl.
+                        </div>
+                    </div>
+                `;
+                const form = document.getElementById('mainCreateForm');
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const slug = document.getElementById('slugInput').value.trim().toLowerCase();
+                    const content = document.getElementById('pasteContent').value;
+                    this.handleCreatePaste(slug, content);
+                });
+            },
+            
+            // لوحة التحكم - قائمة المسودات
+            renderDashboard(container) {
+                const pastes = this.getAllPastes();
+                container.innerHTML = `
+                    <div class="max-w-6xl mx-auto">
+                        <div class="flex justify-between items-center flex-wrap gap-4 mb-8">
+                            <h2 class="text-2xl font-bold"><i class="fa-solid fa-table-list text-[#58a6ff]"></i> مسودات JSON الخاصة بي</h2>
+                            <a href="${this.getBaseUrl()}" class="bg-[#238636] hover:bg-[#2ea043] px-5 py-2.5 rounded-xl transition text-white font-bold"><i class="fa-solid fa-plus"></i> إنشاء جديدة</a>
+                        </div>
+                        <div class="glass-panel rounded-2xl overflow-hidden">
+                            ${pastes.length === 0 ? `
+                                <div class="text-center py-16">
+                                    <i class="fa-regular fa-folder-open text-5xl text-gray-600"></i>
+                                    <p class="mt-4 text-gray-400">لا توجد أي لصقات بعد، أنشئ أول لصقة JSON</p>
+                                    <a href="${this.getBaseUrl()}" class="inline-block mt-5 bg-[#1f6feb] px-6 py-2 rounded-xl">إنشاء الآن</a>
+                                </div>
+                            ` : `
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-sm">
+                                        <thead class="bg-[#0d1117] border-b border-[#30363d]">
+                                            <tr class="text-left">
+                                                <th class="px-5 py-4 font-mono">Slug</th>
+                                                <th class="px-5 py-4">تاريخ الإنشاء</th>
+                                                <th class="px-5 py-4">إجراءات JSON API</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${pastes.slice().reverse().map(p => {
+                                                let decodedSample = '';
+                                                try { decodedSample = this.decode(p.encoded).substring(0, 60); } catch(e){ decodedSample = '...'; }
+                                                const jsonLink = this.getBaseUrl() + `?api=json&slug=${p.slug}&data=${encodeURIComponent(p.encoded)}`;
+                                                return `
+                                                    <tr class="border-b border-[#21262d] hover:bg-[#161b22] transition">
+                                                        <td class="px-5 py-3 font-mono text-[#58a6ff] font-bold">/${p.slug}</td>
+                                                        <td class="px-5 py-3 text-gray-400 text-xs">${new Date(p.createdAt).toLocaleString()}</td>
+                                                        <td class="px-5 py-3 flex gap-2 flex-wrap">
+                                                            <a href="${jsonLink}" target="_blank" class="text-[#2ea043] text-xs bg-[#21262d] px-2 py-1 rounded-md hover:bg-[#30363d]"><i class="fa-solid fa-bolt"></i> JSON مباشر</a>
+                                                            <button class="copyJsonBtn text-[#58a6ff] text-xs bg-[#21262d] px-2 py-1 rounded-md" data-url="${jsonLink}"><i class="fa-regular fa-copy"></i> نسخ JSON URL</button>
+                                                            <button onclick="App.deletePasteBySlug('${p.slug}')" class="text-red-400 text-xs bg-[#21262d] px-2 py-1 rounded-md"><i class="fa-regular fa-trash-can"></i> حذف</button>
+                                                        </td>
+                                                    </tr>
+                                                `;
+                                            }).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `}
+                        </div>
+                        <p class="text-center text-xs text-gray-500 mt-6"><i class="fa-regular fa-circle-info"></i> الروابط تحتوي على البيانات مشفرة — تعمل في أي مكان ويمكن استخدام API JSON فوراً.</p>
+                    </div>
+                `;
+                document.querySelectorAll('.copyJsonBtn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const url = btn.getAttribute('data-url');
+                        if(url) this.copyToClipboard(url);
+                    });
+                });
+            },
+            
+            // محدد المسار
+            renderCurrentRoute() {
+                const mainContainer = document.getElementById('app');
+                if (!mainContainer) return;
+                const params = new URLSearchParams(window.location.search);
+                const hash = window.location.hash;
+                
+                // عرض الصفحة بناءً على hash أو معامل view
+                if (params.get('view') !== null && params.get('slug') && params.get('data')) {
+                    const slug = params.get('slug');
+                    const dataEnc = params.get('data');
+                    this.renderViewScreen(mainContainer, slug, dataEnc);
+                } else if (hash === '#dashboard') {
+                    this.renderDashboard(mainContainer);
+                } else {
+                    this.renderHome(mainContainer);
+                }
+            },
+            
+            initRouting() {
+                this.handleDirectApi();     // إذا كان api/json مباشر نعرض JSON بدون واجهة
+                this.renderCurrentRoute();
+                window.addEventListener('hashchange', () => {
+                    if (this.handleDirectApi()) return;
+                    this.renderCurrentRoute();
+                });
+                window.addEventListener('popstate', () => {
+                    if (this.handleDirectApi()) return;
+                    this.renderCurrentRoute();
+                });
+            }
+        };
+        
+        function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){ if(m === '&') return '&amp;'; if(m === '<') return '&lt;'; if(m === '>') return '&gt;'; return m;}); }
+        
+        window.App = App;
+        document.addEventListener('DOMContentLoaded', () => App.initRouting());
+    </script>
 </body>
 </html>
