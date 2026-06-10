@@ -3,37 +3,279 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق الرقم الآمن - GitHub Pages</title>
-    <link rel="stylesheet" href="style.css">
+    <title>نظام حماية الرقم</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/tajawal@5.0.19/index.css">
+    <style>
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: #f8fafc;
+        }
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .locked-overlay {
+            position: relative;
+        }
+        .locked-overlay::after {
+            content: '🔒 مقفل';
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.75rem;
+            color: #64748b;
+            background: #e2e8f0;
+            padding: 2px 8px;
+            border-radius: 4px;
+            pointer-events: none;
+        }
+    </style>
 </head>
-<body>
-    <div class="container">
-        <h1>🔐 نظام حفظ الرقم بكود أمان</h1>
+<body class="min-h-screen flex items-center justify-center p-4">
 
-        <div class="card">
-            <h2>📥 إدخال أو تحديث الرقم</h2>
-            <input type="text" id="inputCode" placeholder="كود الأمان" autocomplete="off">
-            <input type="text" id="inputNumber" placeholder="الرقم المراد حفظه">
-            <button id="saveBtn">💾 حفظ / تحديث</button>
-            <div id="saveMessage" class="message"></div>
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden fade-in">
+        <div class="bg-blue-600 p-6 text-center">
+            <h1 class="text-2xl font-bold text-white">نظام حماية الرقم</h1>
+            <p class="text-blue-100 text-sm mt-2">أدخل كود الأمان لتعديل أو حفظ الرقم</p>
         </div>
 
-        <div class="card">
-            <h2>✏️ تعديل الرقم فقط (يتطلب كود الأمان)</h2>
-            <input type="text" id="updateCode" placeholder="كود الأمان">
-            <input type="text" id="newNumber" placeholder="الرقم الجديد">
-            <button id="updateBtn">🔄 تعديل الرقم</button>
-            <div id="updateMessage" class="message"></div>
-        </div>
+        <div class="p-6 space-y-6">
+            <!-- Security Code Section -->
+            <div class="space-y-2">
+                <label class="block text-sm font-semibold text-slate-700">كود الأمان</label>
+                <div class="flex gap-2">
+                    <input 
+                        type="password" 
+                        id="securityInput" 
+                        placeholder="أدخل كود الأمان (الافتراضي: 1234)" 
+                        class="flex-1 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-slate-800 placeholder-slate-400"
+                    >
+                    <button 
+                        id="verifyBtn" 
+                        class="px-6 py-3 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition-colors font-medium whitespace-nowrap"
+                    >
+                        تحقق
+                    </button>
+                </div>
+                <p id="securityMsg" class="text-xs h-4 transition-colors"></p>
+            </div>
 
-        <div class="card">
-            <h2>🔍 قراءة الرقم (API تجريبي)</h2>
-            <input type="text" id="readCode" placeholder="كود الأمان">
-            <button id="readBtn">📖 قراءة الرقم</button>
-            <div id="readResult" class="result"></div>
+            <div class="border-t border-slate-200"></div>
+
+            <!-- Number Section -->
+            <div class="space-y-2">
+                <label class="block text-sm font-semibold text-slate-700">الرقم المحمي</label>
+                <div class="relative">
+                    <input 
+                        type="number" 
+                        id="numberInput" 
+                        disabled
+                        placeholder="أدخل الرقم هنا" 
+                        class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-slate-800 placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-500 locked-overlay"
+                    >
+                </div>
+                
+                <div class="flex gap-3 mt-4">
+                    <button 
+                        id="saveBtn" 
+                        disabled
+                        class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:bg-slate-300 disabled:cursor-not-allowed disabled:hover:bg-slate-300 flex items-center justify-center gap-2"
+                    >
+                        <span>حفظ الرقم</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <button 
+                        id="readBtn" 
+                        class="flex-1 px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium flex items-center justify-center gap-2"
+                    >
+                        <span>قراءة الرقم</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- API Response Display -->
+            <div id="apiResponse" class="hidden p-4 rounded-lg border text-sm fade-in"></div>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script>
+        // Mock API Service simulating backend database operations
+        const NumberAPI = {
+            save: async (num) => {
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        localStorage.setItem('protected_system_number', num);
+                        resolve({ 
+                            success: true, 
+                            message: 'تم حفظ الرقم بنجاح في قاعدة البيانات',
+                            timestamp: new Date().toISOString()
+                        });
+                    }, 600);
+                });
+            },
+            read: async () => {
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        const savedNum = localStorage.getItem('protected_system_number');
+                        if (savedNum !== null && savedNum !== '') {
+                            resolve({ 
+                                success: true, 
+                                data: savedNum,
+                                message: 'تم استرجاع الرقم بنجاح'
+                            });
+                        } else {
+                            resolve({ 
+                                success: false, 
+                                message: 'لا يوجد رقم محفوظ حالياً في النظام'
+                            });
+                        }
+                    }, 600);
+                });
+            }
+        };
+
+        // DOM Elements
+        const securityInput = document.getElementById('securityInput');
+        const numberInput = document.getElementById('numberInput');
+        const verifyBtn = document.getElementById('verifyBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const readBtn = document.getElementById('readBtn');
+        const securityMsg = document.getElementById('securityMsg');
+        const apiResponse = document.getElementById('apiResponse');
+
+        // State
+        const CORRECT_SECURITY_CODE = '1234';
+        let isUnlocked = false;
+
+        // Helper: Show API Response
+        function showResponse(isSuccess, message, data = null) {
+            apiResponse.classList.remove('hidden', 'bg-emerald-50', 'border-emerald-200', 'text-emerald-800', 'bg-red-50', 'border-red-200', 'text-red-800');
+            
+            if (isSuccess) {
+                apiResponse.classList.add('bg-emerald-50', 'border-emerald-200', 'text-emerald-800');
+                apiResponse.innerHTML = `
+                    <div class="font-bold mb-1 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        نجاح العملية
+                    </div>
+                    <div>${message}</div>
+                    ${data ? `<div class="mt-2 font-mono text-lg font-bold">${data}</div>` : ''}
+                `;
+            } else {
+                apiResponse.classList.add('bg-red-50', 'border-red-200', 'text-red-800');
+                apiResponse.innerHTML = `
+                    <div class="font-bold mb-1 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        فشل العملية
+                    </div>
+                    <div>${message}</div>
+                `;
+            }
+        }
+
+        // Verify Security Code
+        verifyBtn.addEventListener('click', () => {
+            const inputCode = securityInput.value.trim();
+            
+            if (inputCode === CORRECT_SECURITY_CODE) {
+                isUnlocked = true;
+                numberInput.disabled = false;
+                saveBtn.disabled = false;
+                numberInput.classList.remove('locked-overlay');
+                numberInput.classList.add('ring-2', 'ring-blue-500', 'border-blue-500');
+                
+                securityMsg.textContent = 'تم التحقق بنجاح. يمكنك الآن تعديل الرقم.';
+                securityMsg.className = 'text-xs h-4 text-emerald-600 font-medium';
+                
+                showResponse(true, 'تم فتح القفل بنجاح. يمكنك الآن حفظ أو قراءة الرقم.');
+            } else {
+                isUnlocked = false;
+                numberInput.disabled = true;
+                saveBtn.disabled = true;
+                numberInput.classList.add('locked-overlay');
+                numberInput.classList.remove('ring-2', 'ring-blue-500', 'border-blue-500');
+                
+                securityMsg.textContent = 'كود الأمان غير صحيح. حاول مرة أخرى.';
+                securityMsg.className = 'text-xs h-4 text-red-600 font-medium';
+                
+                showResponse(false, 'كود الأمان المدخل غير صحيح.');
+            }
+        });
+
+        // Save Number via API
+        saveBtn.addEventListener('click', async () => {
+            if (!isUnlocked) {
+                showResponse(false, 'يجب إدخال كود الأمان الصحيح أولاً.');
+                return;
+            }
+
+            const numValue = numberInput.value.trim();
+            if (!numValue) {
+                showResponse(false, 'الرجاء إدخال رقم قبل الحفظ.');
+                return;
+            }
+
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> جاري الحفظ...';
+
+            try {
+                const response = await NumberAPI.save(numValue);
+                showResponse(response.success, response.message);
+            } catch (error) {
+                showResponse(false, 'حدث خطأ أثناء الاتصال بالخادم.');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = `
+                    <span>حفظ الرقم</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                `;
+            }
+        });
+
+        // Read Number via API
+        readBtn.addEventListener('click', async () => {
+            readBtn.disabled = true;
+            readBtn.innerHTML = '<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> جاري القراءة...';
+
+            try {
+                const response = await NumberAPI.read();
+                if (response.success) {
+                    showResponse(true, response.message, response.data);
+                } else {
+                    showResponse(false, response.message);
+                }
+            } catch (error) {
+                showResponse(false, 'حدث خطأ أثناء قراءة البيانات من الخادم.');
+            } finally {
+                readBtn.disabled = false;
+                readBtn.innerHTML = `
+                    <span>قراءة الرقم</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                    </svg>
+                `;
+            }
+        });
+
+        // Allow Enter key to trigger verify
+        securityInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                verifyBtn.click();
+            }
+        });
+    </script>
 </body>
 </html>
+
