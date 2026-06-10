@@ -1,1073 +1,624 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rentry — Markdown Pastebin</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --ink: #1A1A2E;
-    --ink-soft: #4A4A6A;
-    --accent: #2563EB;
-    --accent-hover: #1D4ED8;
-    --surface: #FAFAFA;
-    --border: #E2E8F0;
-    --border-focus: #93C5FD;
-    --code-bg: #F1F5F9;
-    --danger: #DC2626;
-    --success: #16A34A;
-    --mono: 'JetBrains Mono', monospace;
-    --sans: 'Inter', sans-serif;
-  }
-
-  body {
-    font-family: var(--sans);
-    background: var(--surface);
-    color: var(--ink);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* NAV */
-  nav {
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px;
-    height: 52px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #fff;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  .logo {
-    font-family: var(--mono);
-    font-size: 17px;
-    font-weight: 500;
-    color: var(--ink);
-    text-decoration: none;
-    letter-spacing: -0.5px;
-  }
-  .logo span { color: var(--accent); }
-
-  .nav-links {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
-
-  .nav-link {
-    font-size: 13px;
-    color: var(--ink-soft);
-    text-decoration: none;
-    padding: 5px 10px;
-    border-radius: 6px;
-    transition: background 0.15s, color 0.15s;
-    cursor: pointer;
-    border: none;
-    background: none;
-    font-family: var(--sans);
-  }
-  .nav-link:hover { background: var(--code-bg); color: var(--ink); }
-
-  /* VIEWS */
-  .view { display: none; }
-  .view.active { display: block; }
-
-  /* ─── HOME / EDITOR ─── */
-  .editor-shell {
-    max-width: 860px;
-    margin: 0 auto;
-    padding: 40px 24px 80px;
-    width: 100%;
-  }
-
-  .editor-header {
-    margin-bottom: 24px;
-  }
-
-  .editor-title {
-    font-size: 28px;
-    font-weight: 600;
-    letter-spacing: -0.8px;
-    margin-bottom: 6px;
-    color: var(--ink);
-  }
-  .editor-sub {
-    font-size: 14px;
-    color: var(--ink-soft);
-  }
-  .editor-sub a { color: var(--accent); text-decoration: none; }
-  .editor-sub a:hover { text-decoration: underline; }
-
-  /* URL row */
-  .url-row {
-    display: flex;
-    gap: 0;
-    margin-bottom: 12px;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
-    background: #fff;
-    transition: border-color 0.2s;
-  }
-  .url-row:focus-within { border-color: var(--border-focus); }
-
-  .url-prefix {
-    font-family: var(--mono);
-    font-size: 13px;
-    background: var(--code-bg);
-    color: var(--ink-soft);
-    padding: 10px 12px;
-    border-right: 1.5px solid var(--border);
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-  }
-
-  .url-input {
-    flex: 1;
-    border: none;
-    outline: none;
-    font-family: var(--mono);
-    font-size: 13px;
-    padding: 10px 12px;
-    color: var(--ink);
-    background: transparent;
-  }
-  .url-input::placeholder { color: #B0B7C3; }
-
-  /* Edit key */
-  .key-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-  .key-label {
-    font-size: 12px;
-    color: var(--ink-soft);
-    font-weight: 500;
-    white-space: nowrap;
-  }
-  .key-input {
-    flex: 1;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    padding: 9px 12px;
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--ink);
-    outline: none;
-    background: #fff;
-    transition: border-color 0.2s;
-  }
-  .key-input:focus { border-color: var(--border-focus); }
-
-  /* Textarea toolbar */
-  .editor-toolbar {
-    display: flex;
-    gap: 4px;
-    padding: 6px 8px;
-    border: 1.5px solid var(--border);
-    border-bottom: none;
-    border-radius: 8px 8px 0 0;
-    background: var(--code-bg);
-    flex-wrap: wrap;
-  }
-
-  .tb-btn {
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 4px 9px;
-    border: 1px solid transparent;
-    border-radius: 5px;
-    background: none;
-    color: var(--ink-soft);
-    cursor: pointer;
-    transition: background 0.12s, color 0.12s, border-color 0.12s;
-    font-weight: 500;
-  }
-  .tb-btn:hover { background: #fff; border-color: var(--border); color: var(--ink); }
-  .tb-btn.active { background: #fff; border-color: var(--accent); color: var(--accent); }
-
-  .tb-sep { width: 1px; background: var(--border); margin: 3px 2px; }
-
-  .content-area {
-    position: relative;
-  }
-
-  #editor {
-    width: 100%;
-    min-height: 340px;
-    border: 1.5px solid var(--border);
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    padding: 16px;
-    font-family: var(--mono);
-    font-size: 14px;
-    line-height: 1.7;
-    color: var(--ink);
-    resize: vertical;
-    outline: none;
-    background: #fff;
-    transition: border-color 0.2s;
-    display: block;
-  }
-  #editor:focus { border-color: var(--border-focus); }
-
-  /* Preview pane */
-  #preview-pane {
-    display: none;
-    min-height: 340px;
-    border: 1.5px solid var(--border);
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    padding: 20px 24px;
-    background: #fff;
-    font-size: 15px;
-    line-height: 1.75;
-  }
-
-  /* Markdown preview styles */
-  #preview-pane h1, #preview-pane h2, #preview-pane h3 {
-    font-weight: 600; margin: 1.2em 0 0.4em; letter-spacing: -0.4px;
-  }
-  #preview-pane h1 { font-size: 1.75em; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-  #preview-pane h2 { font-size: 1.35em; }
-  #preview-pane h3 { font-size: 1.1em; }
-  #preview-pane p { margin: 0.7em 0; }
-  #preview-pane a { color: var(--accent); }
-  #preview-pane code {
-    font-family: var(--mono); font-size: 0.88em;
-    background: var(--code-bg); padding: 2px 6px; border-radius: 4px;
-  }
-  #preview-pane pre {
-    background: var(--code-bg); border-radius: 8px; padding: 14px 16px;
-    overflow-x: auto; margin: 1em 0;
-  }
-  #preview-pane pre code { background: none; padding: 0; }
-  #preview-pane blockquote {
-    border-left: 3px solid var(--accent); margin: 1em 0;
-    padding: 4px 0 4px 16px; color: var(--ink-soft);
-  }
-  #preview-pane ul, #preview-pane ol { padding-left: 1.5em; margin: 0.6em 0; }
-  #preview-pane li { margin: 0.25em 0; }
-  #preview-pane hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
-  #preview-pane table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 14px; }
-  #preview-pane th, #preview-pane td { border: 1px solid var(--border); padding: 7px 12px; text-align: left; }
-  #preview-pane th { background: var(--code-bg); font-weight: 600; }
-  #preview-pane img { max-width: 100%; border-radius: 6px; }
-
-  /* char counter */
-  .editor-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 8px;
-  }
-  .char-count { font-size: 12px; color: #B0B7C3; font-family: var(--mono); }
-
-  /* Submit */
-  .submit-row {
-    margin-top: 20px;
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .btn-primary {
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    padding: 10px 22px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    font-family: var(--sans);
-    transition: background 0.15s, transform 0.1s;
-  }
-  .btn-primary:hover { background: var(--accent-hover); }
-  .btn-primary:active { transform: scale(0.98); }
-  .btn-primary:disabled { background: #93C5FD; cursor: not-allowed; }
-
-  .btn-ghost {
-    background: none;
-    color: var(--ink-soft);
-    border: 1.5px solid var(--border);
-    padding: 9px 18px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    font-family: var(--sans);
-    transition: border-color 0.15s, color 0.15s;
-  }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-
-  /* ─── PASTE VIEW ─── */
-  .paste-shell {
-    max-width: 860px;
-    margin: 0 auto;
-    padding: 32px 24px 80px;
-    width: 100%;
-  }
-
-  .paste-topbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 20px;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  .paste-url-badge {
-    font-family: var(--mono);
-    font-size: 13px;
-    background: var(--code-bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px 12px;
-    color: var(--ink-soft);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .paste-url-badge strong { color: var(--ink); }
-
-  .paste-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .btn-sm {
-    font-size: 12px;
-    padding: 6px 12px;
-    border-radius: 6px;
-    border: 1.5px solid var(--border);
-    background: #fff;
-    color: var(--ink-soft);
-    cursor: pointer;
-    font-family: var(--sans);
-    font-weight: 500;
-    transition: border-color 0.15s, color 0.15s;
-  }
-  .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
-  .btn-sm.danger:hover { border-color: var(--danger); color: var(--danger); }
-
-  .paste-content {
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    padding: 28px 32px;
-    background: #fff;
-    min-height: 200px;
-    font-size: 15px;
-    line-height: 1.75;
-  }
-
-  /* Raw view */
-  #raw-content {
-    display: none;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    padding: 20px;
-    background: var(--code-bg);
-    font-family: var(--mono);
-    font-size: 13px;
-    line-height: 1.7;
-    white-space: pre-wrap;
-    word-break: break-all;
-    min-height: 200px;
-  }
-
-  /* ─── MODAL ─── */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.35);
-    z-index: 200;
-    align-items: center;
-    justify-content: center;
-  }
-  .modal-overlay.open { display: flex; }
-
-  .modal {
-    background: #fff;
-    border-radius: 12px;
-    padding: 28px;
-    width: 100%;
-    max-width: 400px;
-    margin: 16px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-  }
-  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
-  .modal p { font-size: 13px; color: var(--ink-soft); margin-bottom: 16px; line-height: 1.5; }
-
-  .modal-input {
-    width: 100%;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-family: var(--mono);
-    font-size: 13px;
-    outline: none;
-    margin-bottom: 16px;
-    transition: border-color 0.2s;
-  }
-  .modal-input:focus { border-color: var(--border-focus); }
-
-  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
-
-  /* ─── TOAST ─── */
-  .toast {
-    position: fixed;
-    bottom: 28px;
-    right: 28px;
-    background: var(--ink);
-    color: #fff;
-    font-size: 13px;
-    padding: 10px 16px;
-    border-radius: 8px;
-    z-index: 300;
-    opacity: 0;
-    transform: translateY(8px);
-    transition: opacity 0.2s, transform 0.2s;
-    pointer-events: none;
-    font-weight: 500;
-  }
-  .toast.show { opacity: 1; transform: translateY(0); }
-  .toast.success { background: var(--success); }
-  .toast.error { background: var(--danger); }
-
-  /* ─── FOOTER ─── */
-  footer {
-    margin-top: auto;
-    border-top: 1px solid var(--border);
-    padding: 18px 24px;
-    display: flex;
-    justify-content: center;
-    gap: 24px;
-    font-size: 12px;
-    color: #B0B7C3;
-    background: #fff;
-    flex-wrap: wrap;
-  }
-  footer a { color: #B0B7C3; text-decoration: none; }
-  footer a:hover { color: var(--ink-soft); }
-
-  /* ─── ALL PASTES LIST ─── */
-  .list-shell {
-    max-width: 860px;
-    margin: 0 auto;
-    padding: 40px 24px 80px;
-    width: 100%;
-  }
-  .list-title { font-size: 20px; font-weight: 600; margin-bottom: 20px; letter-spacing: -0.4px; }
-
-  .paste-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    background: #fff;
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: border-color 0.15s, box-shadow 0.15s;
-    text-decoration: none;
-    color: inherit;
-  }
-  .paste-row:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(37,99,235,0.08); }
-
-  .paste-row-url {
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--accent);
-    font-weight: 500;
-    min-width: 120px;
-  }
-  .paste-row-preview {
-    flex: 1;
-    font-size: 13px;
-    color: var(--ink-soft);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .paste-row-time {
-    font-size: 11px;
-    color: #B0B7C3;
-    font-family: var(--mono);
-    white-space: nowrap;
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--ink-soft);
-  }
-  .empty-state p { font-size: 14px; margin-top: 8px; }
-
-  /* Cursor blink on load */
-  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-  .cursor-hint { display: inline-block; width: 2px; height: 1em; background: var(--accent); animation: blink 1s step-end infinite; vertical-align: text-bottom; margin-left: 1px; }
-
-  @media (max-width: 600px) {
-    .editor-title { font-size: 22px; }
-    .paste-content { padding: 18px; }
-    .submit-row { flex-direction: column; align-items: flex-start; }
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PasteBin API - Pure JSON</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.18/index.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #0d1117; color: #c9d1d9; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.1); border-radius: 50%; border-top-color: #58a6ff; animation: spin 1s ease-in-out infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+        textarea, input { background: #161b22 !important; color: #c9d1d9 !important; border-color: #30363d !important; }
+        textarea:focus, input:focus { border-color: #58a6ff !important; outline: none; }
+        .tab-active { background: #1f6feb; color: white; }
+        .tab-inactive { background: #21262d; color: #8b949e; }
+    </style>
 </head>
-<body>
+<body class="min-h-screen flex flex-col">
+    
+    <nav class="bg-[#161b22] border-b border-[#30363d] sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <a href="#home" class="text-xl font-bold flex items-center gap-2 hover:text-[#58a6ff] transition">
+                <i class="fa-solid fa-bolt text-[#58a6ff]"></i> Pure JSON API
+            </a>
+            <div class="flex gap-4 text-sm font-medium">
+                <a href="#home" class="text-gray-300 hover:text-white transition">Create</a>
+                <a href="#dashboard" class="text-gray-300 hover:text-white transition">My APIs</a>
+            </div>
+        </div>
+    </nav>
 
-<nav>
-  <a class="logo" href="#" onclick="showView('home'); return false;">ren<span>try</span></a>
-  <div class="nav-links">
-    <button class="nav-link" onclick="showView('list')">My Pastes</button>
-    <button class="nav-link" onclick="showView('home')">+ New</button>
-  </div>
-</nav>
+    <main id="app" class="container mx-auto px-4 py-8 flex-grow fade-in">
+        <div class="text-center py-20">
+            <div class="spinner"></div>
+            <p class="mt-4 text-gray-500">Loading...</p>
+        </div>
+    </main>
 
-<!-- ─── HOME VIEW ─── -->
-<div id="view-home" class="view active">
-  <div class="editor-shell">
-    <div class="editor-header">
-      <h1 class="editor-title">New paste<span class="cursor-hint" id="cursor"></span></h1>
-      <p class="editor-sub">Write in <a href="javascript:void(0)" onclick="insertMDGuide()">Markdown</a>. Share instantly. No account needed.</p>
+    <div id="toast" class="fixed bottom-5 right-5 bg-[#21262d] text-white px-6 py-3 rounded-lg shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3 z-50 border border-[#30363d]">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-green-400"></i>
+        <span id="toast-msg"></span>
     </div>
 
-    <!-- URL slug -->
-    <div class="url-row">
-      <span class="url-prefix" id="base-url-prefix">rentry.co/</span>
-      <input class="url-input" id="slug-input" type="text" maxlength="40" placeholder="custom-url (optional)" autocomplete="off" spellcheck="false">
-    </div>
+    <script>
+    // ============================================
+    // PURE JSON API - Using npoint.io
+    // Returns pure JSON with Content-Type: application/json
+    // ============================================
+    
+    const app = {
+        // npoint.io API Service
+        apiService: {
+            baseUrl: 'https://api.npoint.io',
+            
+            async create(data) {
+                const res = await fetch(this.baseUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!res.ok) throw new Error('Failed to create API');
+                return await res.json();
+            },
+            
+            async update(id, data) {
+                const res = await fetch(`${this.baseUrl}/${id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!res.ok) throw new Error('Failed to update API');
+                return await res.json();
+            },
+            
+            async get(id) {
+                const res = await fetch(`${this.baseUrl}/${id}`);
+                if (!res.ok) throw new Error('Failed to fetch API');
+                return await res.json();
+            }
+        },
+        
+        // Base64 encode/decode
+        encode(str) {
+            try { return btoa(unescape(encodeURIComponent(str))); } 
+            catch(e) { return btoa(str); }
+        },
+        
+        decode(str) {
+            try { return decodeURIComponent(escape(atob(str))); } 
+            catch(e) { return atob(str); }
+        },
+        
+        // SHA-256 hash
+        async hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        },
+        
+        escapeHtml(text) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        },
+        
+        showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            document.getElementById('toast-msg').textContent = message;
+            icon.className = type === 'error' 
+                ? 'fa-solid fa-circle-xmark text-red-400' 
+                : 'fa-solid fa-circle-check text-green-400';
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        },
+        
+        copy(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                this.showToast('Copied to clipboard!', 'success');
+            }).catch(() => prompt('Copy this:', text));
+        },
+        
+        getBaseUrl() {
+            return window.location.origin + window.location.pathname;
+        },
+        
+        // ========================================
+        // Create API Endpoint
+        // ========================================
+        async createApiEndpoint(slug, content, password = null) {
+            let passwordHash = null;
+            if (password) {
+                passwordHash = await this.hashPassword(password);
+            }
+            
+            // Prepare payload
+            let payload;
+            try {
+                payload = JSON.parse(content);
+            } catch (e) {
+                payload = {
+                    slug: slug,
+                    content: content,
+                    timestamp: new Date().toISOString(),
+                    type: 'text'
+                };
+            }
+            
+            // Create API endpoint via npoint.io
+            const result = await this.apiService.create(payload);
+            const apiId = result.id;
+            const apiUrl = `https://api.npoint.io/${apiId}`;
+            
+            // Save to localStorage
+            const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
+            const filtered = pastes.filter(p => p.slug !== slug);
+            
+            const paste = {
+                slug: slug,
+                encoded: this.encode(content),
+                created: new Date().toISOString(),
+                passwordHash: passwordHash,
+                apiId: apiId,
+                apiUrl: apiUrl
+            };
+            
+            filtered.push(paste);
+            localStorage.setItem('my_pastes', JSON.stringify(filtered));
+            
+            return paste;
+        },
+        
+        // ========================================
+        // Update API Endpoint
+        // ========================================
+        async updateApiEndpoint(slug, content, passwordHash) {
+            const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
+            const pasteIndex = pastes.findIndex(p => p.slug === slug);
+            
+            if (pasteIndex === -1) throw new Error('Paste not found');
+            
+            const paste = pastes[pasteIndex];
+            
+            // Verify password
+            if (paste.passwordHash && paste.passwordHash !== passwordHash) {
+                throw new Error('Invalid password');
+            }
+            
+            // Prepare payload
+            let payload;
+            try {
+                payload = JSON.parse(content);
+            } catch (e) {
+                payload = {
+                    slug: slug,
+                    content: content,
+                    timestamp: new Date().toISOString(),
+                    type: 'text'
+                };
+            }
+            
+            // Update API via npoint.io
+            await this.apiService.update(paste.apiId, payload);
+            
+            // Update localStorage
+            paste.encoded = this.encode(content);
+            paste.updated = new Date().toISOString();
+            
+            pastes[pasteIndex] = paste;
+            localStorage.setItem('my_pastes', JSON.stringify(pastes));
+            
+            return paste;
+        },
+        
+        // ========================================
+        // Render: Code Examples
+        // ========================================
+        renderCodeExamples(apiUrl) {
+            return `
+                <div class="space-y-4">
+                    <div class="bg-[#0d1117] rounded-lg p-4 border border-[#30363d]">
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-xs text-gray-400 font-semibold">🌐 Pure JSON Endpoint:</p>
+                            <button onclick="app.copy('${apiUrl}')" class="text-gray-400 hover:text-white text-xs">
+                                <i class="fa-solid fa-copy"></i> Copy
+                            </button>
+                        </div>
+                        <code class="text-sm text-green-400 break-all font-mono bg-[#161b22] p-3 rounded block">${apiUrl}</code>
+                        <div class="mt-3 text-xs text-green-400">
+                            <i class="fa-solid fa-circle-check"></i> Content-Type: application/json
+                        </div>
+                    </div>
+                    
+                    <div class="bg-[#0d1117] rounded-lg p-4 border border-[#30363d]">
+                        <p class="text-xs text-gray-400 mb-3 font-semibold">💻 Code Examples:</p>
+                        
+                        <div class="flex gap-2 mb-3 flex-wrap">
+                            <button onclick="app.showTab('python')" id="tab-python" class="tab-active px-3 py-1 rounded text-xs font-bold transition">Python</button>
+                            <button onclick="app.showTab('js')" id="tab-js" class="tab-inactive px-3 py-1 rounded text-xs font-bold transition">JavaScript</button>
+                            <button onclick="app.showTab('curl')" id="tab-curl" class="tab-inactive px-3 py-1 rounded text-xs font-bold transition">cURL</button>
+                            <button onclick="app.showTab('php')" id="tab-php" class="tab-inactive px-3 py-1 rounded text-xs font-bold transition">PHP</button>
+                        </div>
+                        
+                        <div id="code-python" class="code-example">
+                            <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto"><code>import requests
 
-    <!-- Edit key -->
-    <div class="key-row">
-      <span class="key-label">Edit key</span>
-      <input class="key-input" id="key-input" type="text" maxlength="60" placeholder="Set a password to edit later (optional)" autocomplete="off">
-    </div>
+# Pure JSON - works directly!
+r = requests.get("${apiUrl}")
+print(r.json())  # ✅ Returns dict directly
 
-    <!-- Toolbar -->
-    <div class="editor-toolbar">
-      <button class="tb-btn" onclick="wrap('**','**')" title="Bold"><b>B</b></button>
-      <button class="tb-btn" onclick="wrap('*','*')" title="Italic"><i>I</i></button>
-      <button class="tb-btn" onclick="wrap('~~','~~')" title="Strikethrough"><s>S</s></button>
-      <button class="tb-btn" onclick="wrap('`','`')" title="Inline code">code</button>
-      <div class="tb-sep"></div>
-      <button class="tb-btn" onclick="insertLine('# ')" title="H1">H1</button>
-      <button class="tb-btn" onclick="insertLine('## ')" title="H2">H2</button>
-      <button class="tb-btn" onclick="insertLine('### ')" title="H3">H3</button>
-      <div class="tb-sep"></div>
-      <button class="tb-btn" onclick="insertLine('- ')" title="List">— list</button>
-      <button class="tb-btn" onclick="insertLine('> ')" title="Quote">❝ quote</button>
-      <button class="tb-btn" onclick="wrap('\`\`\`\n','\n\`\`\`')" title="Code block">{  }</button>
-      <div class="tb-sep"></div>
-      <button class="tb-btn" id="preview-toggle-btn" onclick="togglePreview()">⟨ preview</button>
-    </div>
+# Access data
+data = r.json()
+print(data)</code></pre>
+                        </div>
+                        
+                        <div id="code-js" class="code-example hidden">
+                            <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto"><code>// Fetch pure JSON
+fetch("${apiUrl}")
+  .then(r => r.json())
+  .then(data => {
+    console.log(data);
+  });</code></pre>
+                        </div>
+                        
+                        <div id="code-curl" class="code-example hidden">
+                            <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto"><code>curl "${apiUrl}"</code></pre>
+                        </div>
+                        
+                        <div id="code-php" class="code-example hidden">
+                            <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto"><code>&lt;?php
+$data = json_decode(file_get_contents("${apiUrl}"), true);
+print_r($data);
+?&gt;</code></pre>
+                        </div>
+                    </div>
+                </div>
+            `;
+        },
+        
+        showTab(lang) {
+            document.querySelectorAll('.code-example').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('[id^="tab-"]').forEach(el => {
+                el.classList.remove('tab-active');
+                el.classList.add('tab-inactive');
+            });
+            
+            document.getElementById(`code-${lang}`).classList.remove('hidden');
+            document.getElementById(`tab-${lang}`).classList.remove('tab-inactive');
+            document.getElementById(`tab-${lang}`).classList.add('tab-active');
+        },
+        
+        // ========================================
+        // Render: Home Page
+        // ========================================
+        renderHome(container) {
+            container.innerHTML = `
+                <div class="max-w-3xl mx-auto">
+                    <div class="text-center mb-8">
+                        <h1 class="text-4xl font-bold text-white mb-3">
+                            <i class="fa-solid fa-bolt text-[#58a6ff]"></i> Pure JSON API
+                        </h1>
+                        <p class="text-gray-400 text-lg">
+                            Create real JSON endpoints that return <strong>pure JSON</strong> directly
+                        </p>
+                        <div class="flex justify-center gap-4 mt-4 text-sm flex-wrap">
+                            <span class="text-green-400"><i class="fa-solid fa-check"></i> Content-Type: application/json</span>
+                            <span class="text-green-400"><i class="fa-solid fa-check"></i> CORS Enabled</span>
+                            <span class="text-green-400"><i class="fa-solid fa-check"></i> No HTML</span>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-[#161b22] p-8 rounded-xl border border-[#30363d]">
+                        <form id="createForm" class="space-y-5">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-300 mb-1">
+                                    <i class="fa-solid fa-tag text-[#58a6ff]"></i> API Name
+                                </label>
+                                <input type="text" id="slug" required pattern="[a-zA-Z0-9_-]+" 
+                                    class="block w-full px-4 py-3 rounded-md font-mono" 
+                                    placeholder="my-api">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-300 mb-1">
+                                    <i class="fa-solid fa-lock text-[#58a6ff]"></i> Password (Optional)
+                                </label>
+                                <input type="password" id="password" 
+                                    class="block w-full px-4 py-3 rounded-md" 
+                                    placeholder="For editing later">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-300 mb-1">
+                                    <i class="fa-solid fa-code text-[#58a6ff]"></i> JSON Content
+                                </label>
+                                <textarea id="content" required rows="12" 
+                                    class="block w-full px-4 py-3 rounded-md text-sm font-mono" 
+                                    placeholder='{"key": "value"}'></textarea>
+                            </div>
+                            
+                            <button type="submit" id="submitBtn" class="w-full bg-[#238636] text-white py-3 px-4 rounded-md hover:bg-[#2ea043] transition font-bold text-lg flex justify-center items-center gap-2">
+                                <i class="fa-solid fa-rocket"></i> Create Pure JSON API
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('createForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const slug = document.getElementById('slug').value.trim().toLowerCase();
+                const content = document.getElementById('content').value;
+                const password = document.getElementById('password').value;
+                
+                if (!/^[a-zA-Z0-9_-]{3,50}$/.test(slug)) {
+                    this.showToast('Invalid slug', 'error');
+                    return;
+                }
+                
+                const btn = document.getElementById('submitBtn');
+                btn.innerHTML = '<div class="spinner"></div> Creating...';
+                btn.disabled = true;
 
-    <div class="content-area">
-      <textarea id="editor" placeholder="Start writing… Markdown is supported." oninput="onEditorInput()" spellcheck="true"></textarea>
-      <div id="preview-pane"></div>
-    </div>
+                try {
+                    const paste = await this.createApiEndpoint(slug, content, password);
+                    window.location.href = `${this.getBaseUrl()}?view&slug=${slug}`;
+                } catch (error) {
+                    this.showToast('Error: ' + error.message, 'error');
+                    btn.innerHTML = '<i class="fa-solid fa-rocket"></i> Create Pure JSON API';
+                    btn.disabled = false;
+                }
+            });
+        },
+        
+        // ========================================
+        // Render: View API
+        // ========================================
+        renderView(container) {
+            const params = new URLSearchParams(window.location.search);
+            const slug = params.get('slug');
+            
+            if (!slug) {
+                container.innerHTML = `<div class="text-center py-20">No API specified</div>`;
+                return;
+            }
+            
+            const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
+            const paste = pastes.find(p => p.slug === slug);
+            
+            if (!paste) {
+                container.innerHTML = `<div class="text-center py-20">API not found</div>`;
+                return;
+            }
+            
+            let content;
+            try { content = this.decode(paste.encoded); } catch(e) { content = ''; }
+            
+            const isProtected = !!paste.passwordHash;
+            
+            container.innerHTML = `
+                <div class="max-w-4xl mx-auto">
+                    <div class="bg-[#161b22] rounded-xl border border-[#30363d] mb-6">
+                        <div class="p-6 border-b border-[#30363d]">
+                            <div class="flex items-start justify-between flex-wrap gap-4">
+                                <div>
+                                    <h1 class="text-2xl font-bold text-white mb-2">
+                                        <i class="fa-solid fa-bolt text-[#58a6ff]"></i> /${slug}
+                                    </h1>
+                                    <div class="text-sm text-gray-400">
+                                        ${isProtected ? '<span class="text-green-400"><i class="fa-solid fa-lock"></i> Protected</span>' : '<span class="text-gray-500"><i class="fa-solid fa-lock-open"></i> Public</span>'}
+                                    </div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button id="editBtn" class="bg-[#f0883e] text-white px-4 py-2 rounded-lg hover:bg-[#f0883e]/80 transition font-bold text-sm">
+                                        <i class="fa-solid fa-pen"></i> Edit
+                                    </button>
+                                    <button onclick="app.copy('${paste.apiUrl}')" class="bg-[#1f6feb] text-white px-4 py-2 rounded-lg hover:bg-[#1f6feb]/80 transition font-bold text-sm">
+                                        <i class="fa-solid fa-copy"></i> Copy URL
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="p-6">
+                            <h3 class="text-sm font-semibold text-gray-400 mb-3">Content Preview:</h3>
+                            <pre class="text-sm bg-[#0d1117] p-4 rounded-lg border border-[#30363d] overflow-x-auto text-gray-200 font-mono max-h-96">${this.escapeHtml(content)}</pre>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-6">
+                        <h2 class="text-xl font-bold text-white mb-4">
+                            <i class="fa-solid fa-book text-[#58a6ff]"></i> API Usage
+                        </h2>
+                        
+                        <div class="bg-green-900/20 border border-green-700/50 rounded-lg p-4 mb-6">
+                            <p class="text-green-400 text-sm font-semibold mb-2">
+                                <i class="fa-solid fa-circle-check"></i> Pure JSON - No HTML!
+                            </p>
+                            <ul class="text-xs text-gray-300 space-y-1">
+                                <li>✓ Returns: application/json</li>
+                                <li>✓ Works with r.json() in Python</li>
+                                <li>✓ CORS enabled</li>
+                            </ul>
+                        </div>
+                        
+                        ${this.renderCodeExamples(paste.apiUrl)}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('editBtn').addEventListener('click', () => {
+                if (isProtected) {
+                    this.showEditWithPassword(slug);
+                } else {
+                    this.renderEdit(document.getElementById('app'), slug);
+                }
+            });
+        },
+        
+        async showEditWithPassword(slug) {
+            const password = prompt('Enter password:');
+            if (!password) return;
+            
+            const hash = await this.hashPassword(password);
+            const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
+            const paste = pastes.find(p => p.slug === slug);
+            
+            if (!paste || paste.passwordHash !== hash) {
+                this.showToast('Incorrect password', 'error');
+                return;
+            }
+            
+            this.renderEdit(document.getElementById('app'), slug, hash);
+        },
+        
+        renderEdit(container, slug, passwordHash = null) {
+            const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
+            const paste = pastes.find(p => p.slug === slug);
+            
+            if (!paste) return;
+            
+            let content;
+            try { content = this.decode(paste.encoded); } catch(e) { content = ''; }
+            
+            container.innerHTML = `
+                <div class="max-w-3xl mx-auto bg-[#161b22] p-8 rounded-xl border border-[#30363d]">
+                    <h2 class="text-2xl font-bold mb-6 text-white">
+                        <i class="fa-solid fa-pen"></i> Edit: /${slug}
+                    </h2>
+                    
+                    <form id="editForm" class="space-y-5">
+                        <textarea id="editContent" required rows="14" 
+                            class="block w-full px-4 py-3 rounded-md text-sm font-mono">${this.escapeHtml(content)}</textarea>
+                        
+                        <div class="flex gap-3">
+                            <button type="button" onclick="history.back()" class="flex-1 bg-[#30363d] text-white py-3 rounded-md font-bold">Cancel</button>
+                            <button type="submit" id="saveBtn" class="flex-1 bg-[#238636] text-white py-3 rounded-md font-bold">
+                                <i class="fa-solid fa-save"></i> Update
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            
+            document.getElementById('editForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const newContent = document.getElementById('editContent').value;
+                
+                const btn = document.getElementById('saveBtn');
+                btn.innerHTML = '<div class="spinner"></div> Updating...';
+                btn.disabled = true;
 
-    <div class="editor-meta">
-      <span class="char-count" id="char-count">0 chars</span>
-    </div>
+                try {
+                    await this.updateApiEndpoint(slug, newContent, passwordHash);
+                    this.showToast('Updated!', 'success');
+                    setTimeout(() => {
+                        window.location.href = `${this.getBaseUrl()}?view&slug=${slug}`;
+                    }, 1000);
+                } catch (error) {
+                    this.showToast('Error: ' + error.message, 'error');
+                    btn.innerHTML = '<i class="fa-solid fa-save"></i> Update';
+                    btn.disabled = false;
+                }
+            });
+        },
+        
+        renderDashboard(container) {
+            const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
+            
+            container.innerHTML = `
+                <div class="max-w-6xl mx-auto">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-white">
+                            <i class="fa-solid fa-list text-[#58a6ff]"></i> My APIs (${pastes.length})
+                        </h2>
+                        <a href="${this.getBaseUrl()}" class="bg-[#238636] text-white px-5 py-3 rounded-lg font-bold text-sm">
+                            <i class="fa-solid fa-plus"></i> New API
+                        </a>
+                    </div>
+                    
+                    <div class="bg-[#161b22] rounded-xl border border-[#30363d] overflow-hidden">
+                        ${pastes.length === 0 ? `
+                            <div class="text-center py-16">
+                                <p class="text-gray-500">No APIs yet</p>
+                            </div>
+                        ` : `
+                            <div class="divide-y divide-[#30363d]">
+                                ${pastes.reverse().map(p => `
+                                    <div class="p-5 hover:bg-[#1c2128] transition">
+                                        <div class="flex items-start justify-between flex-wrap gap-4">
+                                            <div class="flex-1">
+                                                <a href="${this.getBaseUrl()}?view&slug=${p.slug}" class="text-lg font-bold text-[#58a6ff] font-mono">
+                                                    /${p.slug}
+                                                </a>
+                                                ${p.passwordHash ? '<span class="text-xs text-green-400 ml-2"><i class="fa-solid fa-lock"></i></span>' : ''}
+                                                <div class="text-xs text-gray-500 mt-1">${new Date(p.created).toLocaleString()}</div>
+                                                <div class="text-xs text-gray-400 font-mono mt-2">${p.apiUrl}</div>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <button onclick="app.copy('${p.apiUrl}')" class="text-green-400 hover:bg-[#21262d] px-3 py-2 rounded text-xs font-bold">
+                                                    <i class="fa-solid fa-copy"></i> Copy
+                                                </button>
+                                                <button onclick="app.deletePaste('${p.slug}')" class="text-red-400 hover:bg-[#21262d] px-3 py-2 rounded text-xs font-bold">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        },
+        
+        deletePaste(slug) {
+            if (confirm(`Delete /${slug}?`)) {
+                const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
+                const filtered = pastes.filter(p => p.slug !== slug);
+                localStorage.setItem('my_pastes', JSON.stringify(filtered));
+                this.showToast('Deleted', 'success');
+                this.renderDashboard(document.getElementById('app'));
+            }
+        },
+        
+        route() {
+            const params = new URLSearchParams(window.location.search);
+            const main = document.getElementById('app');
+            
+            main.innerHTML = '';
+            main.classList.remove('fade-in');
+            void main.offsetWidth;
+            main.classList.add('fade-in');
+            
+            const hash = window.location.hash;
+            
+            if (params.get('view') !== null) {
+                this.renderView(main);
+            } else if (hash === '#dashboard') {
+                this.renderDashboard(main);
+            } else {
+                this.renderHome(main);
+            }
+        },
+        
+        init() {
+            this.route();
+            window.addEventListener('hashchange', () => this.route());
+        }
+    };
 
-    <div class="submit-row">
-      <button class="btn-primary" id="publish-btn" onclick="publishPaste()">Publish</button>
-      <button class="btn-ghost" onclick="clearEditor()">Clear</button>
-    </div>
-  </div>
-</div>
-
-<!-- ─── PASTE VIEW ─── -->
-<div id="view-paste" class="view">
-  <div class="paste-shell">
-    <div class="paste-topbar">
-      <div class="paste-url-badge">
-        rentry.co/<strong id="paste-slug-display"></strong>
-        <button class="btn-sm" style="border:none;padding:2px 6px;font-size:11px;" onclick="copyPasteUrl()" title="Copy link">⎘</button>
-      </div>
-      <div class="paste-actions">
-        <button class="btn-sm" id="raw-toggle-btn" onclick="toggleRaw()">Raw</button>
-        <button class="btn-sm" onclick="editPaste()">Edit</button>
-        <button class="btn-sm danger" onclick="openDeleteModal()">Delete</button>
-        <button class="btn-sm" onclick="showView('home')">+ New</button>
-      </div>
-    </div>
-
-    <div class="paste-content" id="paste-rendered"></div>
-    <pre id="raw-content"></pre>
-  </div>
-</div>
-
-<!-- ─── LIST VIEW ─── -->
-<div id="view-list" class="view">
-  <div class="list-shell">
-    <div class="list-title">My pastes</div>
-    <div id="pastes-list"></div>
-  </div>
-</div>
-
-<!-- ─── EDIT VIEW ─── -->
-<div id="view-edit" class="view">
-  <div class="editor-shell">
-    <div class="editor-header">
-      <h1 class="editor-title">Edit paste</h1>
-      <p class="editor-sub" id="edit-url-hint"></p>
-    </div>
-    <div class="editor-toolbar">
-      <button class="tb-btn" onclick="wrapEdit('**','**')"><b>B</b></button>
-      <button class="tb-btn" onclick="wrapEdit('*','*')"><i>I</i></button>
-      <button class="tb-btn" onclick="wrapEdit('~~','~~')"><s>S</s></button>
-      <button class="tb-btn" onclick="wrapEdit('`','`')">code</button>
-      <div class="tb-sep"></div>
-      <button class="tb-btn" id="edit-preview-btn" onclick="toggleEditPreview()">⟨ preview</button>
-    </div>
-    <textarea id="edit-editor" style="width:100%;min-height:340px;border:1.5px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:16px;font-family:var(--mono);font-size:14px;line-height:1.7;color:var(--ink);resize:vertical;outline:none;background:#fff;" oninput="onEditInput()"></textarea>
-    <div id="edit-preview-pane" style="display:none;min-height:340px;border:1.5px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:20px 24px;background:#fff;font-size:15px;line-height:1.75;"></div>
-    <div class="submit-row">
-      <button class="btn-primary" onclick="saveEdit()">Save changes</button>
-      <button class="btn-ghost" onclick="cancelEdit()">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<!-- ─── MODALS ─── -->
-<!-- Delete modal -->
-<div class="modal-overlay" id="delete-modal">
-  <div class="modal">
-    <h3>Delete paste?</h3>
-    <p>Enter your edit key to confirm deletion. This cannot be undone.</p>
-    <input class="modal-input" id="delete-key-input" type="password" placeholder="Edit key">
-    <div class="modal-actions">
-      <button class="btn-ghost" onclick="closeModal('delete-modal')">Cancel</button>
-      <button class="btn-primary" style="background:var(--danger)" onclick="confirmDelete()">Delete</button>
-    </div>
-  </div>
-</div>
-
-<!-- Edit key modal -->
-<div class="modal-overlay" id="edit-key-modal">
-  <div class="modal">
-    <h3>Enter edit key</h3>
-    <p>This paste is protected. Enter the edit key to continue.</p>
-    <input class="modal-input" id="edit-key-modal-input" type="password" placeholder="Edit key">
-    <div class="modal-actions">
-      <button class="btn-ghost" onclick="closeModal('edit-key-modal')">Cancel</button>
-      <button class="btn-primary" onclick="confirmEditKey()">Continue</button>
-    </div>
-  </div>
-</div>
-
-<!-- Toast -->
-<div class="toast" id="toast"></div>
-
-<footer>
-  <a href="javascript:void(0)">About</a>
-  <a href="javascript:void(0)">Markdown guide</a>
-  <a href="javascript:void(0)">API</a>
-  <span>Made with ♥ — open source</span>
-</footer>
-
-<script>
-/* ── Storage ── */
-const DB_KEY = 'rentry_pastes';
-
-function getDB() {
-  try { return JSON.parse(localStorage.getItem(DB_KEY) || '{}'); }
-  catch { return {}; }
-}
-function saveDB(db) {
-  localStorage.setItem(DB_KEY, JSON.stringify(db));
-}
-
-/* ── Markdown renderer (no deps) ── */
-function renderMD(text) {
-  if (!text) return '';
-  let html = text
-    // escape
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    // fenced code blocks
-    .replace(/```([^`]*?)```/gs, (_,c)=>`<pre><code>${c.trim()}</code></pre>`)
-    // headings
-    .replace(/^#{6} (.+)$/gm,'<h6>$1</h6>')
-    .replace(/^#{5} (.+)$/gm,'<h5>$1</h5>')
-    .replace(/^#{4} (.+)$/gm,'<h4>$1</h4>')
-    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
-    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
-    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
-    // hr
-    .replace(/^---+$/gm,'<hr>')
-    // blockquote
-    .replace(/^&gt; (.+)$/gm,'<blockquote>$1</blockquote>')
-    // bold/italic
-    .replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g,'<em>$1</em>')
-    .replace(/~~(.+?)~~/g,'<del>$1</del>')
-    // inline code
-    .replace(/`([^`]+)`/g,'<code>$1</code>')
-    // links & images
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g,'<img src="$2" alt="$1">')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
-    // unordered list
-    .replace(/(^- .+$(\n^- .+$)*)/gm, m=>'<ul>'+m.split('\n').map(l=>`<li>${l.slice(2)}</li>`).join('')+'</ul>')
-    // ordered list
-    .replace(/(^\d+\. .+$(\n^\d+\. .+$)*)/gm, m=>'<ol>'+m.split('\n').map(l=>`<li>${l.replace(/^\d+\. /,'')}</li>`).join('')+'</ol>')
-    // paragraphs
-    .split(/\n\n+/)
-    .map(block => {
-      if (/^<(h[1-6]|ul|ol|pre|hr|blockquote)/.test(block)) return block;
-      return `<p>${block.replace(/\n/g,'<br>')}</p>`;
-    })
-    .join('\n');
-  return html;
-}
-
-/* ── Views ── */
-let currentSlug = null;
-let editingSlug = null;
-let showingRaw = false;
-let showingPreview = false;
-let editShowingPreview = false;
-
-function showView(name) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('view-'+name).classList.add('active');
-  if (name === 'list') renderList();
-  if (name === 'home') {
-    // stop cursor blink after 3s
-    setTimeout(()=>{ const c=document.getElementById('cursor'); if(c) c.style.display='none'; }, 3000);
-  }
-}
-
-/* ── Editor helpers ── */
-function onEditorInput() {
-  const v = document.getElementById('editor').value;
-  document.getElementById('char-count').textContent = v.length.toLocaleString() + ' chars';
-  if (showingPreview) document.getElementById('preview-pane').innerHTML = renderMD(v);
-}
-
-function togglePreview() {
-  showingPreview = !showingPreview;
-  const ta = document.getElementById('editor');
-  const pane = document.getElementById('preview-pane');
-  const btn = document.getElementById('preview-toggle-btn');
-  if (showingPreview) {
-    pane.innerHTML = renderMD(ta.value);
-    pane.style.display = 'block';
-    ta.style.display = 'none';
-    btn.classList.add('active');
-    btn.textContent = '✎ edit';
-  } else {
-    pane.style.display = 'none';
-    ta.style.display = 'block';
-    btn.classList.remove('active');
-    btn.textContent = '⟨ preview';
-  }
-}
-
-function toggleEditPreview() {
-  editShowingPreview = !editShowingPreview;
-  const ta = document.getElementById('edit-editor');
-  const pane = document.getElementById('edit-preview-pane');
-  const btn = document.getElementById('edit-preview-btn');
-  if (editShowingPreview) {
-    pane.innerHTML = renderMD(ta.value);
-    pane.style.display = 'block';
-    ta.style.display = 'none';
-    btn.classList.add('active');
-    btn.textContent = '✎ edit';
-  } else {
-    pane.style.display = 'none';
-    ta.style.display = 'block';
-    btn.classList.remove('active');
-    btn.textContent = '⟨ preview';
-  }
-}
-
-function onEditInput() {
-  if (editShowingPreview) {
-    document.getElementById('edit-preview-pane').innerHTML = renderMD(document.getElementById('edit-editor').value);
-  }
-}
-
-function wrap(before, after) {
-  const ta = document.getElementById('editor');
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  const sel = ta.value.slice(s, e) || 'text';
-  ta.value = ta.value.slice(0, s) + before + sel + after + ta.value.slice(e);
-  ta.focus();
-  ta.selectionStart = s + before.length;
-  ta.selectionEnd = s + before.length + sel.length;
-  onEditorInput();
-}
-function wrapEdit(before, after) {
-  const ta = document.getElementById('edit-editor');
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  const sel = ta.value.slice(s, e) || 'text';
-  ta.value = ta.value.slice(0, s) + before + sel + after + ta.value.slice(e);
-  ta.focus();
-  ta.selectionStart = s + before.length;
-  ta.selectionEnd = s + before.length + sel.length;
-}
-
-function insertLine(prefix) {
-  const ta = document.getElementById('editor');
-  const s = ta.selectionStart;
-  const lineStart = ta.value.lastIndexOf('\n', s-1)+1;
-  ta.value = ta.value.slice(0,lineStart) + prefix + ta.value.slice(lineStart);
-  ta.focus();
-  onEditorInput();
-}
-
-function clearEditor() {
-  document.getElementById('editor').value = '';
-  document.getElementById('slug-input').value = '';
-  document.getElementById('key-input').value = '';
-  document.getElementById('char-count').textContent = '0 chars';
-  if (showingPreview) togglePreview();
-}
-
-function insertMDGuide() {
-  document.getElementById('editor').value = `# Markdown Guide
-
-**Bold** and *italic* text
-
-## Lists
-- Item one
-- Item two
-- Item three
-
-## Code
-Inline \`code\` or a block:
-
-\`\`\`
-function hello() {
-  console.log("Hello, world!");
-}
-\`\`\`
-
-## Quotes
-> "The best way to predict the future is to invent it."
-
-## Links
-[Rentry](https://rentry.co)
-
----
-*Happy writing!*
-`;
-  onEditorInput();
-}
-
-/* ── Publish ── */
-function generateSlug() {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  return Array.from({length:8}, ()=>chars[Math.floor(Math.random()*chars.length)]).join('');
-}
-
-function publishPaste() {
-  const content = document.getElementById('editor').value.trim();
-  if (!content) { showToast('Write something first!', 'error'); return; }
-
-  let slug = document.getElementById('slug-input').value.trim()
-    .toLowerCase().replace(/[^a-z0-9-_]/g,'').slice(0,40);
-  if (!slug) slug = generateSlug();
-
-  const key = document.getElementById('key-input').value.trim();
-  const db = getDB();
-
-  if (db[slug]) {
-    showToast('URL taken — try another', 'error');
-    document.getElementById('slug-input').focus();
-    return;
-  }
-
-  db[slug] = { content, key, createdAt: Date.now() };
-  saveDB(db);
-
-  showToast('Published!', 'success');
-  clearEditor();
-  openPaste(slug);
-}
-
-/* ── Paste view ── */
-function openPaste(slug) {
-  const db = getDB();
-  const paste = db[slug];
-  if (!paste) { showToast('Paste not found', 'error'); showView('home'); return; }
-
-  currentSlug = slug;
-  showingRaw = false;
-
-  document.getElementById('paste-slug-display').textContent = slug;
-  document.getElementById('paste-rendered').innerHTML = renderMD(paste.content);
-  document.getElementById('paste-rendered').style.display = 'block';
-  document.getElementById('raw-content').textContent = paste.content;
-  document.getElementById('raw-content').style.display = 'none';
-  document.getElementById('raw-toggle-btn').textContent = 'Raw';
-
-  showView('paste');
-}
-
-function toggleRaw() {
-  showingRaw = !showingRaw;
-  document.getElementById('paste-rendered').style.display = showingRaw ? 'none' : 'block';
-  document.getElementById('raw-content').style.display = showingRaw ? 'block' : 'none';
-  document.getElementById('raw-toggle-btn').textContent = showingRaw ? 'Rendered' : 'Raw';
-}
-
-function copyPasteUrl() {
-  const url = `${location.href.split('?')[0]}?p=${currentSlug}`;
-  navigator.clipboard.writeText(url).then(()=>showToast('Link copied!')).catch(()=>{
-    prompt('Copy this link:', url);
-  });
-}
-
-/* ── Edit ── */
-function editPaste() {
-  const db = getDB();
-  const paste = db[currentSlug];
-  if (paste.key) {
-    openModal('edit-key-modal');
-  } else {
-    startEdit(currentSlug);
-  }
-}
-
-function confirmEditKey() {
-  const input = document.getElementById('edit-key-modal-input').value.trim();
-  const db = getDB();
-  const paste = db[currentSlug];
-  if (paste.key && paste.key !== input) {
-    showToast('Wrong edit key', 'error');
-    return;
-  }
-  closeModal('edit-key-modal');
-  document.getElementById('edit-key-modal-input').value = '';
-  startEdit(currentSlug);
-}
-
-function startEdit(slug) {
-  const db = getDB();
-  editingSlug = slug;
-  document.getElementById('edit-editor').value = db[slug].content;
-  document.getElementById('edit-url-hint').textContent = `Editing rentry.co/${slug}`;
-  if (editShowingPreview) toggleEditPreview();
-  showView('edit');
-}
-
-function saveEdit() {
-  const content = document.getElementById('edit-editor').value.trim();
-  if (!content) { showToast('Content cannot be empty', 'error'); return; }
-  const db = getDB();
-  db[editingSlug].content = content;
-  db[editingSlug].updatedAt = Date.now();
-  saveDB(db);
-  showToast('Saved!', 'success');
-  openPaste(editingSlug);
-}
-
-function cancelEdit() {
-  openPaste(currentSlug || editingSlug);
-}
-
-/* ── Delete ── */
-function openDeleteModal() { openModal('delete-modal'); }
-
-function confirmDelete() {
-  const input = document.getElementById('delete-key-input').value.trim();
-  const db = getDB();
-  const paste = db[currentSlug];
-  if (paste.key && paste.key !== input) {
-    showToast('Wrong edit key', 'error');
-    return;
-  }
-  delete db[currentSlug];
-  saveDB(db);
-  closeModal('delete-modal');
-  document.getElementById('delete-key-input').value = '';
-  showToast('Paste deleted');
-  currentSlug = null;
-  showView('home');
-}
-
-/* ── List ── */
-function renderList() {
-  const db = getDB();
-  const slugs = Object.keys(db).sort((a,b)=>(db[b].createdAt||0)-(db[a].createdAt||0));
-  const el = document.getElementById('pastes-list');
-  if (!slugs.length) {
-    el.innerHTML = `<div class="empty-state">
-      <div style="font-size:32px">📋</div>
-      <p>No pastes yet. <a href="javascript:void(0)" onclick="showView('home')" style="color:var(--accent)">Create one!</a></p>
-    </div>`;
-    return;
-  }
-  el.innerHTML = slugs.map(slug => {
-    const p = db[slug];
-    const preview = p.content.replace(/[#*`>\n]/g,' ').slice(0,80);
-    const d = new Date(p.createdAt);
-    const when = d.toLocaleDateString();
-    return `<div class="paste-row" onclick="openPaste('${slug}')">
-      <span class="paste-row-url">${slug}</span>
-      <span class="paste-row-preview">${preview}</span>
-      <span class="paste-row-time">${when}</span>
-    </div>`;
-  }).join('');
-}
-
-/* ── Modal helpers ── */
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
-document.querySelectorAll('.modal-overlay').forEach(m => {
-  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
-});
-
-/* ── Toast ── */
-let toastTimer;
-function showToast(msg, type='') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast show' + (type ? ' '+type : '');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>{ t.className='toast'; }, 2600);
-}
-
-/* ── URL routing (share links) ── */
-const params = new URLSearchParams(location.search);
-const slugParam = params.get('p');
-if (slugParam) {
-  const db = getDB();
-  if (db[slugParam]) { openPaste(slugParam); }
-  else {
-    showToast('Paste not found or expired', 'error');
-  }
-}
-
-/* ── Stop cursor after 3s ── */
-setTimeout(()=>{ const c=document.getElementById('cursor'); if(c) c.style.display='none'; }, 3000);
-
-/* ── Set base URL ── */
-document.getElementById('base-url-prefix').textContent = location.hostname + '/';
-</script>
+    document.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
 </body>
 </html>
