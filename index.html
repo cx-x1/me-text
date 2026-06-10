@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PasteBin API - Pure JSON Endpoints</title>
+    <title>PasteBin API - Pure JSON</title>
     
     <link href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.18/index.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,7 +18,6 @@
         pre { white-space: pre-wrap; word-wrap: break-word; }
         textarea, input { background: #161b22 !important; color: #c9d1d9 !important; border-color: #30363d !important; }
         textarea:focus, input:focus { border-color: #58a6ff !important; outline: none; }
-        .code-block { font-family: 'Fira Code', 'Consolas', monospace; }
         .tab-active { background: #1f6feb; color: white; }
         .tab-inactive { background: #21262d; color: #8b949e; }
     </style>
@@ -28,7 +27,7 @@
     <nav class="bg-[#161b22] border-b border-[#30363d] sticky top-0 z-50">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
             <a href="#home" class="text-xl font-bold flex items-center gap-2 hover:text-[#58a6ff] transition">
-                <i class="fa-solid fa-bolt text-[#58a6ff]"></i> PasteBin API
+                <i class="fa-solid fa-bolt text-[#58a6ff]"></i> Pure JSON API
             </a>
             <div class="flex gap-4 text-sm font-medium">
                 <a href="#home" class="text-gray-300 hover:text-white transition">Create</a>
@@ -51,14 +50,14 @@
 
     <script>
     // ============================================
-    // PASTEBIN API - PURE JSON ENDPOINTS
-    // Uses jsonstorage.net for real JSON APIs
+    // PURE JSON API - Using npoint.io
+    // Returns pure JSON with Content-Type: application/json
     // ============================================
     
     const app = {
-        // API Service Configuration
+        // npoint.io API Service
         apiService: {
-            baseUrl: 'https://api.jsonstorage.net/v1/json',
+            baseUrl: 'https://api.npoint.io',
             
             async create(data) {
                 const res = await fetch(this.baseUrl, {
@@ -70,9 +69,9 @@
                 return await res.json();
             },
             
-            async update(url, data) {
-                const res = await fetch(url, {
-                    method: 'PUT',
+            async update(id, data) {
+                const res = await fetch(`${this.baseUrl}/${id}`, {
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
@@ -80,8 +79,8 @@
                 return await res.json();
             },
             
-            async get(url) {
-                const res = await fetch(url);
+            async get(id) {
+                const res = await fetch(`${this.baseUrl}/${id}`);
                 if (!res.ok) throw new Error('Failed to fetch API');
                 return await res.json();
             }
@@ -145,10 +144,8 @@
             // Prepare payload
             let payload;
             try {
-                // If content is valid JSON, use it directly
                 payload = JSON.parse(content);
             } catch (e) {
-                // Otherwise wrap it
                 payload = {
                     slug: slug,
                     content: content,
@@ -157,9 +154,10 @@
                 };
             }
             
-            // Create API endpoint
+            // Create API endpoint via npoint.io
             const result = await this.apiService.create(payload);
-            const apiUrl = result.uri;
+            const apiId = result.id;
+            const apiUrl = `https://api.npoint.io/${apiId}`;
             
             // Save to localStorage
             const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
@@ -170,8 +168,8 @@
                 encoded: this.encode(content),
                 created: new Date().toISOString(),
                 passwordHash: passwordHash,
-                apiUrl: apiUrl,
-                isJson: payload !== null && typeof payload === 'object'
+                apiId: apiId,
+                apiUrl: apiUrl
             };
             
             filtered.push(paste);
@@ -209,13 +207,12 @@
                 };
             }
             
-            // Update API
-            await this.apiService.update(paste.apiUrl, payload);
+            // Update API via npoint.io
+            await this.apiService.update(paste.apiId, payload);
             
             // Update localStorage
             paste.encoded = this.encode(content);
             paste.updated = new Date().toISOString();
-            paste.isJson = payload !== null && typeof payload === 'object';
             
             pastes[pasteIndex] = paste;
             localStorage.setItem('my_pastes', JSON.stringify(pastes));
@@ -231,96 +228,57 @@
                 <div class="space-y-4">
                     <div class="bg-[#0d1117] rounded-lg p-4 border border-[#30363d]">
                         <div class="flex items-center justify-between mb-2">
-                            <p class="text-xs text-gray-400 font-semibold">🌐 API Endpoint (Pure JSON):</p>
+                            <p class="text-xs text-gray-400 font-semibold">🌐 Pure JSON Endpoint:</p>
                             <button onclick="app.copy('${apiUrl}')" class="text-gray-400 hover:text-white text-xs">
                                 <i class="fa-solid fa-copy"></i> Copy
                             </button>
                         </div>
                         <code class="text-sm text-green-400 break-all font-mono bg-[#161b22] p-3 rounded block">${apiUrl}</code>
+                        <div class="mt-3 text-xs text-green-400">
+                            <i class="fa-solid fa-circle-check"></i> Content-Type: application/json
+                        </div>
                     </div>
                     
                     <div class="bg-[#0d1117] rounded-lg p-4 border border-[#30363d]">
                         <p class="text-xs text-gray-400 mb-3 font-semibold">💻 Code Examples:</p>
                         
-                        <!-- Tabs -->
                         <div class="flex gap-2 mb-3 flex-wrap">
-                            <button onclick="app.showTab('js')" id="tab-js" class="tab-active px-3 py-1 rounded text-xs font-bold transition">JavaScript</button>
-                            <button onclick="app.showTab('python')" id="tab-python" class="tab-inactive px-3 py-1 rounded text-xs font-bold transition">Python</button>
+                            <button onclick="app.showTab('python')" id="tab-python" class="tab-active px-3 py-1 rounded text-xs font-bold transition">Python</button>
+                            <button onclick="app.showTab('js')" id="tab-js" class="tab-inactive px-3 py-1 rounded text-xs font-bold transition">JavaScript</button>
                             <button onclick="app.showTab('curl')" id="tab-curl" class="tab-inactive px-3 py-1 rounded text-xs font-bold transition">cURL</button>
                             <button onclick="app.showTab('php')" id="tab-php" class="tab-inactive px-3 py-1 rounded text-xs font-bold transition">PHP</button>
-                            <button onclick="app.showTab('flutter')" id="tab-flutter" class="tab-inactive px-3 py-1 rounded text-xs font-bold transition">Flutter</button>
                         </div>
                         
-                        <!-- JavaScript -->
-                        <div id="code-js" class="code-example">
-                            <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto"><code>// Fetch JSON data
-fetch("${apiUrl}")
-  .then(response => response.json())
-  .then(data => {
-    console.log(data);
-    // Use your data here
-  })
-  .catch(error => console.error('Error:', error));
-
-// Or with async/await
-async function getData() {
-  const response = await fetch("${apiUrl}");
-  const data = await response.json();
-  return data;
-}</code></pre>
-                        </div>
-                        
-                        <!-- Python -->
-                        <div id="code-python" class="code-example hidden">
+                        <div id="code-python" class="code-example">
                             <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto"><code>import requests
 
-# Fetch JSON data
-response = requests.get("${apiUrl}")
-data = response.json()
+# Pure JSON - works directly!
+r = requests.get("${apiUrl}")
+print(r.json())  # ✅ Returns dict directly
 
-print(data)
-# Access your data
-# print(data['key'])</code></pre>
+# Access data
+data = r.json()
+print(data)</code></pre>
                         </div>
                         
-                        <!-- cURL -->
+                        <div id="code-js" class="code-example hidden">
+                            <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto"><code>// Fetch pure JSON
+fetch("${apiUrl}")
+  .then(r => r.json())
+  .then(data => {
+    console.log(data);
+  });</code></pre>
+                        </div>
+                        
                         <div id="code-curl" class="code-example hidden">
-                            <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto"><code># Get JSON data
-curl -X GET "${apiUrl}"
-
-# Or with jq for pretty printing
-curl -s "${apiUrl}" | jq .</code></pre>
+                            <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto"><code>curl "${apiUrl}"</code></pre>
                         </div>
                         
-                        <!-- PHP -->
                         <div id="code-php" class="code-example hidden">
                             <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto"><code>&lt;?php
-// Fetch JSON data
-$url = "${apiUrl}";
-$response = file_get_contents($url);
-$data = json_decode($response, true);
-
+$data = json_decode(file_get_contents("${apiUrl}"), true);
 print_r($data);
-// Access: $data['key']
 ?&gt;</code></pre>
-                        </div>
-                        
-                        <!-- Flutter/Dart -->
-                        <div id="code-flutter" class="code-example hidden">
-                            <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto"><code>import 'package:http/http.dart' as http;
-import 'dart:convert';
-
-Future&lt;Map&lt;String, dynamic&gt;&gt; fetchData() async {
-  final response = await http.get(
-    Uri.parse('${apiUrl}')
-  );
-  
-  if (response.statusCode == 200) {
-    return jsonDecode(response.body);
-  } else {
-    throw Exception('Failed to load data');
-  }
-}</code></pre>
                         </div>
                     </div>
                 </div>
@@ -328,64 +286,55 @@ Future&lt;Map&lt;String, dynamic&gt;&gt; fetchData() async {
         },
         
         showTab(lang) {
-            // Hide all
             document.querySelectorAll('.code-example').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('[id^="tab-"]').forEach(el => {
                 el.classList.remove('tab-active');
                 el.classList.add('tab-inactive');
             });
             
-            // Show selected
             document.getElementById(`code-${lang}`).classList.remove('hidden');
             document.getElementById(`tab-${lang}`).classList.remove('tab-inactive');
             document.getElementById(`tab-${lang}`).classList.add('tab-active');
         },
         
         // ========================================
-        // Render: Home Page (Create API)
+        // Render: Home Page
         // ========================================
         renderHome(container) {
             container.innerHTML = `
                 <div class="max-w-3xl mx-auto">
-                    <!-- Hero -->
                     <div class="text-center mb-8">
                         <h1 class="text-4xl font-bold text-white mb-3">
                             <i class="fa-solid fa-bolt text-[#58a6ff]"></i> Pure JSON API
                         </h1>
                         <p class="text-gray-400 text-lg">
-                            Create real JSON endpoints that work from <strong>any device</strong> and <strong>any programming language</strong>
+                            Create real JSON endpoints that return <strong>pure JSON</strong> directly
                         </p>
-                        <div class="flex justify-center gap-4 mt-4 text-sm">
+                        <div class="flex justify-center gap-4 mt-4 text-sm flex-wrap">
+                            <span class="text-green-400"><i class="fa-solid fa-check"></i> Content-Type: application/json</span>
                             <span class="text-green-400"><i class="fa-solid fa-check"></i> CORS Enabled</span>
-                            <span class="text-green-400"><i class="fa-solid fa-check"></i> No Auth Required</span>
-                            <span class="text-green-400"><i class="fa-solid fa-check"></i> Instant Updates</span>
+                            <span class="text-green-400"><i class="fa-solid fa-check"></i> No HTML</span>
                         </div>
                     </div>
                     
-                    <!-- Form -->
                     <div class="bg-[#161b22] p-8 rounded-xl border border-[#30363d]">
                         <form id="createForm" class="space-y-5">
                             <div>
                                 <label class="block text-sm font-semibold text-gray-300 mb-1">
-                                    <i class="fa-solid fa-tag text-[#58a6ff]"></i> API Name (Slug)
+                                    <i class="fa-solid fa-tag text-[#58a6ff]"></i> API Name
                                 </label>
-                                <div class="flex">
-                                    <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-[#30363d] bg-[#0d1117] text-gray-400 text-sm font-mono">/api/</span>
-                                    <input type="text" id="slug" required pattern="[a-zA-Z0-9_-]+" 
-                                        class="flex-1 block w-full px-4 py-3 rounded-r-md font-mono" 
-                                        placeholder="my-api-endpoint">
-                                </div>
-                                <p class="text-xs text-gray-500 mt-1">Letters, numbers, hyphens, underscores (3-50 chars)</p>
+                                <input type="text" id="slug" required pattern="[a-zA-Z0-9_-]+" 
+                                    class="block w-full px-4 py-3 rounded-md font-mono" 
+                                    placeholder="my-api">
                             </div>
                             
                             <div>
                                 <label class="block text-sm font-semibold text-gray-300 mb-1">
-                                    <i class="fa-solid fa-lock text-[#58a6ff]"></i> Password (Optional - for editing later)
+                                    <i class="fa-solid fa-lock text-[#58a6ff]"></i> Password (Optional)
                                 </label>
                                 <input type="password" id="password" 
                                     class="block w-full px-4 py-3 rounded-md" 
-                                    placeholder="Leave empty for public API, or set password to protect editing">
-                                <p class="text-xs text-gray-500 mt-1">Password protects editing, not reading. API remains public.</p>
+                                    placeholder="For editing later">
                             </div>
                             
                             <div>
@@ -394,20 +343,11 @@ Future&lt;Map&lt;String, dynamic&gt;&gt; fetchData() async {
                                 </label>
                                 <textarea id="content" required rows="12" 
                                     class="block w-full px-4 py-3 rounded-md text-sm font-mono" 
-                                    placeholder='{
-  "name": "My API",
-  "version": "1.0",
-  "data": [
-    {"id": 1, "value": "example"}
-  ]
-}
-
-Or paste any text - it will be wrapped in JSON automatically'></textarea>
-                                <p class="text-xs text-gray-500 mt-1">Paste valid JSON for pure JSON output, or any text</p>
+                                    placeholder='{"key": "value"}'></textarea>
                             </div>
                             
                             <button type="submit" id="submitBtn" class="w-full bg-[#238636] text-white py-3 px-4 rounded-md hover:bg-[#2ea043] transition font-bold text-lg flex justify-center items-center gap-2">
-                                <i class="fa-solid fa-rocket"></i> Create JSON API
+                                <i class="fa-solid fa-rocket"></i> Create Pure JSON API
                             </button>
                         </form>
                     </div>
@@ -421,23 +361,20 @@ Or paste any text - it will be wrapped in JSON automatically'></textarea>
                 const password = document.getElementById('password').value;
                 
                 if (!/^[a-zA-Z0-9_-]{3,50}$/.test(slug)) {
-                    this.showToast('Invalid slug: 3-50 characters, letters/numbers/hyphens/underscores only', 'error');
+                    this.showToast('Invalid slug', 'error');
                     return;
                 }
                 
                 const btn = document.getElementById('submitBtn');
-                btn.innerHTML = '<div class="spinner"></div> Creating API...';
+                btn.innerHTML = '<div class="spinner"></div> Creating...';
                 btn.disabled = true;
 
                 try {
                     const paste = await this.createApiEndpoint(slug, content, password);
-                    
-                    // Redirect to view page
-                    const viewUrl = `${this.getBaseUrl()}?view&slug=${slug}`;
-                    window.location.href = viewUrl;
+                    window.location.href = `${this.getBaseUrl()}?view&slug=${slug}`;
                 } catch (error) {
-                    this.showToast('Failed to create API: ' + error.message, 'error');
-                    btn.innerHTML = '<i class="fa-solid fa-rocket"></i> Create JSON API';
+                    this.showToast('Error: ' + error.message, 'error');
+                    btn.innerHTML = '<i class="fa-solid fa-rocket"></i> Create Pure JSON API';
                     btn.disabled = false;
                 }
             });
@@ -451,12 +388,7 @@ Or paste any text - it will be wrapped in JSON automatically'></textarea>
             const slug = params.get('slug');
             
             if (!slug) {
-                container.innerHTML = `
-                    <div class="max-w-2xl mx-auto text-center py-20">
-                        <i class="fa-solid fa-circle-question text-7xl text-gray-600 mb-4"></i>
-                        <h2 class="text-2xl text-gray-300">No API specified</h2>
-                        <a href="${this.getBaseUrl()}" class="text-[#58a6ff] mt-4 inline-block font-bold">Create New API</a>
-                    </div>`;
+                container.innerHTML = `<div class="text-center py-20">No API specified</div>`;
                 return;
             }
             
@@ -464,13 +396,7 @@ Or paste any text - it will be wrapped in JSON automatically'></textarea>
             const paste = pastes.find(p => p.slug === slug);
             
             if (!paste) {
-                container.innerHTML = `
-                    <div class="max-w-2xl mx-auto text-center py-20">
-                        <i class="fa-solid fa-circle-xmark text-7xl text-red-400 mb-4"></i>
-                        <h2 class="text-2xl text-gray-300">API not found</h2>
-                        <p class="text-gray-500 mt-2">This API doesn't exist or was deleted</p>
-                        <a href="${this.getBaseUrl()}" class="text-[#58a6ff] mt-4 inline-block font-bold">Create New API</a>
-                    </div>`;
+                container.innerHTML = `<div class="text-center py-20">API not found</div>`;
                 return;
             }
             
@@ -481,39 +407,20 @@ Or paste any text - it will be wrapped in JSON automatically'></textarea>
             
             container.innerHTML = `
                 <div class="max-w-4xl mx-auto">
-                    <!-- Header -->
                     <div class="bg-[#161b22] rounded-xl border border-[#30363d] mb-6">
                         <div class="p-6 border-b border-[#30363d]">
                             <div class="flex items-start justify-between flex-wrap gap-4">
                                 <div>
-                                    <h1 class="text-2xl font-bold text-white mb-2 flex items-center gap-2">
-                                        <i class="fa-solid fa-bolt text-[#58a6ff]"></i> /api/${slug}
+                                    <h1 class="text-2xl font-bold text-white mb-2">
+                                        <i class="fa-solid fa-bolt text-[#58a6ff]"></i> /${slug}
                                     </h1>
-                                    <div class="flex items-center gap-3 text-sm">
-                                        <span class="text-gray-400">
-                                            <i class="fa-solid fa-calendar"></i> 
-                                            Created: ${new Date(paste.created).toLocaleDateString()}
-                                        </span>
-                                        ${paste.updated ? `
-                                            <span class="text-gray-400">
-                                                <i class="fa-solid fa-clock"></i> 
-                                                Updated: ${new Date(paste.updated).toLocaleDateString()}
-                                            </span>
-                                        ` : ''}
-                                        ${isProtected ? `
-                                            <span class="text-green-400">
-                                                <i class="fa-solid fa-lock"></i> Password Protected
-                                            </span>
-                                        ` : `
-                                            <span class="text-gray-500">
-                                                <i class="fa-solid fa-lock-open"></i> Public
-                                            </span>
-                                        `}
+                                    <div class="text-sm text-gray-400">
+                                        ${isProtected ? '<span class="text-green-400"><i class="fa-solid fa-lock"></i> Protected</span>' : '<span class="text-gray-500"><i class="fa-solid fa-lock-open"></i> Public</span>'}
                                     </div>
                                 </div>
                                 <div class="flex gap-2">
                                     <button id="editBtn" class="bg-[#f0883e] text-white px-4 py-2 rounded-lg hover:bg-[#f0883e]/80 transition font-bold text-sm">
-                                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                                        <i class="fa-solid fa-pen"></i> Edit
                                     </button>
                                     <button onclick="app.copy('${paste.apiUrl}')" class="bg-[#1f6feb] text-white px-4 py-2 rounded-lg hover:bg-[#1f6feb]/80 transition font-bold text-sm">
                                         <i class="fa-solid fa-copy"></i> Copy URL
@@ -522,30 +429,25 @@ Or paste any text - it will be wrapped in JSON automatically'></textarea>
                             </div>
                         </div>
                         
-                        <!-- Content Preview -->
                         <div class="p-6">
-                            <h3 class="text-sm font-semibold text-gray-400 mb-3">
-                                <i class="fa-solid fa-eye"></i> Content Preview:
-                            </h3>
+                            <h3 class="text-sm font-semibold text-gray-400 mb-3">Content Preview:</h3>
                             <pre class="text-sm bg-[#0d1117] p-4 rounded-lg border border-[#30363d] overflow-x-auto text-gray-200 font-mono max-h-96">${this.escapeHtml(content)}</pre>
                         </div>
                     </div>
                     
-                    <!-- API Documentation -->
                     <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-6">
-                        <h2 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                            <i class="fa-solid fa-book text-[#58a6ff]"></i> API Documentation
+                        <h2 class="text-xl font-bold text-white mb-4">
+                            <i class="fa-solid fa-book text-[#58a6ff]"></i> API Usage
                         </h2>
                         
                         <div class="bg-green-900/20 border border-green-700/50 rounded-lg p-4 mb-6">
                             <p class="text-green-400 text-sm font-semibold mb-2">
-                                <i class="fa-solid fa-circle-check"></i> This is a Real JSON API
+                                <i class="fa-solid fa-circle-check"></i> Pure JSON - No HTML!
                             </p>
                             <ul class="text-xs text-gray-300 space-y-1">
-                                <li>✓ Content-Type: application/json</li>
-                                <li>✓ CORS enabled - works from any domain</li>
-                                <li>✓ No authentication required to read</li>
-                                <li>✓ Can be called from any programming language</li>
+                                <li>✓ Returns: application/json</li>
+                                <li>✓ Works with r.json() in Python</li>
+                                <li>✓ CORS enabled</li>
                             </ul>
                         </div>
                         
@@ -554,7 +456,6 @@ Or paste any text - it will be wrapped in JSON automatically'></textarea>
                 </div>
             `;
             
-            // Edit button handler
             document.getElementById('editBtn').addEventListener('click', () => {
                 if (isProtected) {
                     this.showEditWithPassword(slug);
@@ -564,11 +465,8 @@ Or paste any text - it will be wrapped in JSON automatically'></textarea>
             });
         },
         
-        // ========================================
-        // Show Edit with Password
-        // ========================================
         async showEditWithPassword(slug) {
-            const password = prompt('Enter password to edit this API:');
+            const password = prompt('Enter password:');
             if (!password) return;
             
             const hash = await this.hashPassword(password);
@@ -583,46 +481,29 @@ Or paste any text - it will be wrapped in JSON automatically'></textarea>
             this.renderEdit(document.getElementById('app'), slug, hash);
         },
         
-        // ========================================
-        // Render: Edit API
-        // ========================================
         renderEdit(container, slug, passwordHash = null) {
             const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
             const paste = pastes.find(p => p.slug === slug);
             
-            if (!paste) {
-                this.showToast('API not found', 'error');
-                return;
-            }
+            if (!paste) return;
             
             let content;
             try { content = this.decode(paste.encoded); } catch(e) { content = ''; }
             
             container.innerHTML = `
                 <div class="max-w-3xl mx-auto bg-[#161b22] p-8 rounded-xl border border-[#30363d]">
-                    <h2 class="text-2xl font-bold mb-2 text-white">
-                        <i class="fa-solid fa-pen-to-square text-[#58a6ff]"></i> Edit API: /api/${slug}
+                    <h2 class="text-2xl font-bold mb-6 text-white">
+                        <i class="fa-solid fa-pen"></i> Edit: /${slug}
                     </h2>
-                    <p class="text-gray-400 text-sm mb-6">
-                        <i class="fa-solid fa-info-circle text-[#58a6ff]"></i> 
-                        Changes will update the JSON endpoint instantly
-                    </p>
                     
                     <form id="editForm" class="space-y-5">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-300 mb-1">
-                                <i class="fa-solid fa-code text-[#58a6ff]"></i> JSON Content
-                            </label>
-                            <textarea id="editContent" required rows="14" 
-                                class="block w-full px-4 py-3 rounded-md text-sm font-mono">${this.escapeHtml(content)}</textarea>
-                        </div>
+                        <textarea id="editContent" required rows="14" 
+                            class="block w-full px-4 py-3 rounded-md text-sm font-mono">${this.escapeHtml(content)}</textarea>
                         
                         <div class="flex gap-3">
-                            <button type="button" onclick="history.back()" class="flex-1 bg-[#30363d] text-white py-3 px-4 rounded-md hover:bg-[#30363d]/80 transition font-bold text-lg">
-                                <i class="fa-solid fa-arrow-left"></i> Cancel
-                            </button>
-                            <button type="submit" id="saveBtn" class="flex-1 bg-[#238636] text-white py-3 px-4 rounded-md hover:bg-[#2ea043] transition font-bold text-lg flex justify-center items-center gap-2">
-                                <i class="fa-solid fa-save"></i> Update API
+                            <button type="button" onclick="history.back()" class="flex-1 bg-[#30363d] text-white py-3 rounded-md font-bold">Cancel</button>
+                            <button type="submit" id="saveBtn" class="flex-1 bg-[#238636] text-white py-3 rounded-md font-bold">
+                                <i class="fa-solid fa-save"></i> Update
                             </button>
                         </div>
                     </form>
@@ -639,22 +520,18 @@ Or paste any text - it will be wrapped in JSON automatically'></textarea>
 
                 try {
                     await this.updateApiEndpoint(slug, newContent, passwordHash);
-                    this.showToast('API updated successfully!', 'success');
-                    
+                    this.showToast('Updated!', 'success');
                     setTimeout(() => {
                         window.location.href = `${this.getBaseUrl()}?view&slug=${slug}`;
                     }, 1000);
                 } catch (error) {
-                    this.showToast('Failed to update: ' + error.message, 'error');
-                    btn.innerHTML = '<i class="fa-solid fa-save"></i> Update API';
+                    this.showToast('Error: ' + error.message, 'error');
+                    btn.innerHTML = '<i class="fa-solid fa-save"></i> Update';
                     btn.disabled = false;
                 }
             });
         },
         
-        // ========================================
-        // Render: Dashboard
-        // ========================================
         renderDashboard(container) {
             const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
             
@@ -662,10 +539,9 @@ Or paste any text - it will be wrapped in JSON automatically'></textarea>
                 <div class="max-w-6xl mx-auto">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-2xl font-bold text-white">
-                            <i class="fa-solid fa-list text-[#58a6ff]"></i> My JSON APIs
-                            <span class="text-sm text-gray-400 bg-[#161b22] px-3 py-1 rounded-full ml-2 border border-[#30363d]">${pastes.length}</span>
+                            <i class="fa-solid fa-list text-[#58a6ff]"></i> My APIs (${pastes.length})
                         </h2>
-                        <a href="${this.getBaseUrl()}" class="bg-[#238636] text-white px-5 py-3 rounded-lg hover:bg-[#2ea043] transition font-bold text-sm">
+                        <a href="${this.getBaseUrl()}" class="bg-[#238636] text-white px-5 py-3 rounded-lg font-bold text-sm">
                             <i class="fa-solid fa-plus"></i> New API
                         </a>
                     </div>
@@ -673,53 +549,27 @@ Or paste any text - it will be wrapped in JSON automatically'></textarea>
                     <div class="bg-[#161b22] rounded-xl border border-[#30363d] overflow-hidden">
                         ${pastes.length === 0 ? `
                             <div class="text-center py-16">
-                                <i class="fa-solid fa-bolt text-6xl text-gray-600 mb-4"></i>
-                                <h3 class="text-xl font-bold text-gray-400 mb-2">No APIs Yet</h3>
-                                <p class="text-gray-500 mb-6">Create your first JSON API endpoint</p>
-                                <a href="${this.getBaseUrl()}" class="bg-[#238636] text-white px-6 py-3 rounded-lg hover:bg-[#2ea043] transition font-bold inline-block">
-                                    <i class="fa-solid fa-plus"></i> Create API
-                                </a>
+                                <p class="text-gray-500">No APIs yet</p>
                             </div>
                         ` : `
                             <div class="divide-y divide-[#30363d]">
                                 ${pastes.reverse().map(p => `
                                     <div class="p-5 hover:bg-[#1c2128] transition">
                                         <div class="flex items-start justify-between flex-wrap gap-4">
-                                            <div class="flex-1 min-w-0">
-                                                <div class="flex items-center gap-2 mb-2">
-                                                    <a href="${this.getBaseUrl()}?view&slug=${p.slug}" class="text-lg font-bold text-[#58a6ff] hover:underline font-mono">
-                                                        /api/${p.slug}
-                                                    </a>
-                                                    ${p.passwordHash ? `
-                                                        <span class="text-xs text-green-400 bg-green-900/30 px-2 py-1 rounded">
-                                                            <i class="fa-solid fa-lock"></i> Protected
-                                                        </span>
-                                                    ` : ''}
-                                                </div>
-                                                <div class="text-xs text-gray-500 mb-2">
-                                                    Created: ${new Date(p.created).toLocaleString()}
-                                                    ${p.updated ? ` • Updated: ${new Date(p.updated).toLocaleString()}` : ''}
-                                                </div>
-                                                <div class="text-xs text-gray-400 font-mono bg-[#0d1117] p-2 rounded truncate">
-                                                    ${p.apiUrl}
-                                                </div>
-                                            </div>
-                                            <div class="flex gap-2 flex-wrap">
-                                                <a href="${this.getBaseUrl()}?view&slug=${p.slug}" 
-                                                    class="text-blue-400 hover:bg-[#21262d] px-3 py-2 rounded text-xs font-bold transition">
-                                                    <i class="fa-solid fa-eye"></i> View
+                                            <div class="flex-1">
+                                                <a href="${this.getBaseUrl()}?view&slug=${p.slug}" class="text-lg font-bold text-[#58a6ff] font-mono">
+                                                    /${p.slug}
                                                 </a>
-                                                <button onclick="app.copy('${p.apiUrl}')" 
-                                                    class="text-green-400 hover:bg-[#21262d] px-3 py-2 rounded text-xs font-bold transition">
-                                                    <i class="fa-solid fa-copy"></i> Copy URL
+                                                ${p.passwordHash ? '<span class="text-xs text-green-400 ml-2"><i class="fa-solid fa-lock"></i></span>' : ''}
+                                                <div class="text-xs text-gray-500 mt-1">${new Date(p.created).toLocaleString()}</div>
+                                                <div class="text-xs text-gray-400 font-mono mt-2">${p.apiUrl}</div>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <button onclick="app.copy('${p.apiUrl}')" class="text-green-400 hover:bg-[#21262d] px-3 py-2 rounded text-xs font-bold">
+                                                    <i class="fa-solid fa-copy"></i> Copy
                                                 </button>
-                                                <button onclick="app.editFromDashboard('${p.slug}')" 
-                                                    class="text-orange-400 hover:bg-[#21262d] px-3 py-2 rounded text-xs font-bold transition">
-                                                    <i class="fa-solid fa-pen"></i> Edit
-                                                </button>
-                                                <button onclick="app.deletePaste('${p.slug}')" 
-                                                    class="text-red-400 hover:bg-[#21262d] px-3 py-2 rounded text-xs font-bold transition">
-                                                    <i class="fa-solid fa-trash"></i> Delete
+                                                <button onclick="app.deletePaste('${p.slug}')" class="text-red-400 hover:bg-[#21262d] px-3 py-2 rounded text-xs font-bold">
+                                                    <i class="fa-solid fa-trash"></i>
                                                 </button>
                                             </div>
                                         </div>
@@ -732,35 +582,16 @@ Or paste any text - it will be wrapped in JSON automatically'></textarea>
             `;
         },
         
-        async editFromDashboard(slug) {
-            const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
-            const paste = pastes.find(p => p.slug === slug);
-            
-            if (!paste) {
-                this.showToast('API not found', 'error');
-                return;
-            }
-            
-            if (paste.passwordHash) {
-                await this.showEditWithPassword(slug);
-            } else {
-                this.renderEdit(document.getElementById('app'), slug);
-            }
-        },
-        
         deletePaste(slug) {
-            if (confirm(`Delete API "/${slug}"? This cannot be undone.`)) {
+            if (confirm(`Delete /${slug}?`)) {
                 const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
                 const filtered = pastes.filter(p => p.slug !== slug);
                 localStorage.setItem('my_pastes', JSON.stringify(filtered));
-                this.showToast('API deleted', 'success');
+                this.showToast('Deleted', 'success');
                 this.renderDashboard(document.getElementById('app'));
             }
         },
         
-        // ========================================
-        // Router
-        // ========================================
         route() {
             const params = new URLSearchParams(window.location.search);
             const main = document.getElementById('app');
