@@ -3,626 +3,734 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rentry Clone - النسخة الآمنة</title>
+    <title>Secure Rentry - GitHub Pages</title>
+    
+    <!-- الخطوط -->
     <link href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.18/index.css" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome للأيقونات -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- CryptoJS للتشفير -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        body { 
+            font-family: 'Inter', sans-serif; 
+        }
+        .fade-in { 
+            animation: fadeIn 0.3s ease-in-out; 
+        }
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(10px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px; 
+            height: 20px; 
+            border: 3px solid rgba(255,255,255,.3); 
+            border-radius: 50%; 
+            border-top-color: #fff; 
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin { 
+            to { transform: rotate(360deg); } 
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
     
+    <!-- ========== الشريط العلوي ========== -->
     <nav class="bg-indigo-600 text-white shadow-lg sticky top-0 z-50">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
             <a href="#home" class="text-2xl font-bold flex items-center gap-2 hover:text-indigo-100 transition">
-                <i class="fa-solid fa-pen-to-square"></i> Rentry Clone
+                <i class="fa-solid fa-lock"></i> Secure Notes
             </a>
             <div id="navLinks" class="flex gap-6 text-sm font-medium">
                 <a href="#home" class="hover:text-indigo-200 transition flex items-center gap-2">
-                    <i class="fa-solid fa-plus"></i> صفحة جديدة
+                    <i class="fa-solid fa-plus"></i> جديد
                 </a>
                 <a href="#dashboard" class="hover:text-indigo-200 transition flex items-center gap-2">
                     <i class="fa-solid fa-gauge-high"></i> لوحة التحكم
                 </a>
-                <button id="logoutBtn" class="hidden hover:text-indigo-200 transition flex items-center gap-2">
-                    <i class="fa-solid fa-right-from-bracket"></i> خروج
+                <button id="lockBtn" class="hidden hover:text-indigo-200 transition flex items-center gap-2" onclick="app.lock()">
+                    <i class="fa-solid fa-lock"></i> قفل
                 </button>
             </div>
         </div>
     </nav>
 
+    <!-- ========== المحتوى الرئيسي ========== -->
     <main id="app" class="container mx-auto px-4 py-8 flex-grow fade-in">
         <div class="text-center py-20">
-            <div class="loading"></div>
+            <div class="spinner"></div>
             <p class="mt-4 text-gray-600">جاري التحميل...</p>
         </div>
     </main>
 
+    <!-- ========== الإشعارات ========== -->
     <div id="toast" class="fixed bottom-5 right-5 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3 z-50">
         <i id="toast-icon" class="fa-solid fa-circle-check text-green-400"></i>
-        <span id="toast-msg">تمت العملية بنجاح</span>
+        <span id="toast-msg"></span>
     </div>
 
     <script>
-        // ============================================
-        // لا توجد أي أسرار هنا! كل الطلبات تذهب للخادم
-        // ============================================
+    // ============================================
+    // التطبيق الكامل - يعمل على GitHub Pages فقط
+    // ============================================
+    
+    const app = {
+        // ========================================
+        // المتغيرات
+        // ========================================
+        masterKey: null,          // مفتاح التشفير (يتم إنشاؤه من كلمة المرور)
+        isUnlocked: false,        // هل تم فتح التطبيق؟
         
-        const API = {
-            async request(endpoint, options = {}) {
-                try {
-                    const response = await fetch(endpoint, {
-                        headers: { 'Content-Type': 'application/json' },
-                        ...options
-                    });
-                    const data = await response.json();
-                    
-                    if (!response.ok) {
-                        throw new Error(data.error || 'حدث خطأ');
-                    }
-                    
-                    return data;
-                } catch (error) {
-                    throw error;
-                }
-            },
-            
-            register(email, password) {
-                return this.request('/api/register', {
-                    method: 'POST',
-                    body: JSON.stringify({ email, password })
-                });
-            },
-            
-            login(email, password) {
-                return this.request('/api/login', {
-                    method: 'POST',
-                    body: JSON.stringify({ email, password })
-                });
-            },
-            
-            logout() {
-                return this.request('/api/logout', {
-                    method: 'POST'
-                });
-            },
-            
-            getMe() {
-                return this.request('/api/me');
-            },
-            
-            createPage(slug, content) {
-                return this.request('/api/pages', {
-                    method: 'POST',
-                    body: JSON.stringify({ slug, content })
-                });
-            },
-            
-            getPage(slug) {
-                return this.request(`/api/pages/${slug}`);
-            },
-            
-            updatePage(slug, content, editToken) {
-                return this.request(`/api/pages/${slug}`, {
-                    method: 'PUT',
-                    body: JSON.stringify({ content, editToken })
-                });
-            },
-            
-            deletePage(slug) {
-                return this.request(`/api/pages/${slug}`, {
-                    method: 'DELETE'
-                });
-            },
-            
-            getDashboard() {
-                return this.request('/api/dashboard');
+        // ========================================
+        // دوال التشفير
+        // ========================================
+        
+        // تشفير النص
+        encrypt(text, key) {
+            return CryptoJS.AES.encrypt(text, key).toString();
+        },
+        
+        // فك تشفير النص
+        decrypt(ciphertext, key) {
+            try {
+                const bytes = CryptoJS.AES.decrypt(ciphertext, key);
+                const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+                if (!decrypted) throw new Error('فشل فك التشفير');
+                return decrypted;
+            } catch (e) {
+                return null;
             }
-        };
-
-        // ============================================
-        // حالة التطبيق
-        // ============================================
-        const app = {
-            currentUser: null,
+        },
+        
+        // إنشاء مفتاح من كلمة المرور
+        deriveKey(password) {
+            return CryptoJS.SHA256(password + "secure_salt_2024").toString();
+        },
+        
+        // ========================================
+        // دوال التخزين (مشفرة)
+        // ========================================
+        
+        // حفظ البيانات مشفرة
+        saveData(key, data) {
+            if (!this.masterKey) return false;
+            const encrypted = this.encrypt(JSON.stringify(data), this.masterKey);
+            localStorage.setItem('enc_' + key, encrypted);
+            return true;
+        },
+        
+        // قراءة البيانات المشفرة
+        loadData(key) {
+            if (!this.masterKey) return null;
+            const encrypted = localStorage.getItem('enc_' + key);
+            if (!encrypted) return null;
+            try {
+                const decrypted = this.decrypt(encrypted, this.masterKey);
+                return decrypted ? JSON.parse(decrypted) : null;
+            } catch (e) {
+                return null;
+            }
+        },
+        
+        // حذف بيانات
+        deleteData(key) {
+            localStorage.removeItem('enc_' + key);
+        },
+        
+        // الحصول على كل المفاتيح المخزنة
+        getAllKeys() {
+            const keys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('enc_')) {
+                    keys.push(key.replace('enc_', ''));
+                }
+            }
+            return keys;
+        },
+        
+        // ========================================
+        // دوال المصادقة
+        // ========================================
+        
+        // التحقق من وجود كلمة مرور محفوظة
+        hasStoredPassword() {
+            const hash = localStorage.getItem('password_hash');
+            return hash !== null;
+        },
+        
+        // إنشاء كلمة مرور جديدة
+        async setupPassword(password) {
+            const hash = CryptoJS.SHA256(password).toString();
+            localStorage.setItem('password_hash', hash);
+            this.masterKey = this.deriveKey(password);
+            this.isUnlocked = true;
+            this.saveData('pages', []); // تهيئة مصفوفة الصفحات
+            this.showToast('تم إنشاء كلمة المرور بنجاح!', 'success');
+        },
+        
+        // التحقق من كلمة المرور
+        verifyPassword(password) {
+            const storedHash = localStorage.getItem('password_hash');
+            if (!storedHash) return false;
+            const inputHash = CryptoJS.SHA256(password).toString();
+            return inputHash === storedHash;
+        },
+        
+        // فتح التطبيق
+        unlock(password) {
+            if (this.verifyPassword(password)) {
+                this.masterKey = this.deriveKey(password);
+                this.isUnlocked = true;
+                return true;
+            }
+            return false;
+        },
+        
+        // قفل التطبيق
+        lock() {
+            this.masterKey = null;
+            this.isUnlocked = false;
+            this.navigate('login');
+            this.showToast('تم قفل التطبيق', 'success');
+        },
+        
+        // ========================================
+        // دوال الصفحات
+        // ========================================
+        
+        // الحصول على كل الصفحات
+        getPages() {
+            return this.loadData('pages') || [];
+        },
+        
+        // حفظ كل الصفحات
+        savePages(pages) {
+            this.saveData('pages', pages);
+        },
+        
+        // إنشاء صفحة جديدة
+        createPage(slug, content) {
+            const pages = this.getPages();
             
-            async init() {
-                // التحقق من حالة تسجيل الدخول
-                try {
-                    const data = await API.getMe();
-                    this.currentUser = data.user;
-                } catch (error) {
-                    this.currentUser = null;
-                }
-                
-                this.updateUI();
-                this.handleRouting();
-
-                window.addEventListener('hashchange', () => this.handleRouting());
-                
-                document.getElementById('logoutBtn').addEventListener('click', async () => {
-                    await API.logout();
-                    this.currentUser = null;
-                    this.updateUI();
-                    this.showToast('تم تسجيل الخروج بنجاح', 'success');
-                    this.navigate('home');
-                });
-            },
-
-            updateUI() {
-                const logoutBtn = document.getElementById('logoutBtn');
-                if (this.currentUser) {
-                    logoutBtn.classList.remove('hidden');
-                } else {
-                    logoutBtn.classList.add('hidden');
-                }
-            },
-
-            handleRouting() {
-                const hash = window.location.hash || '#home';
-                const main = document.getElementById('app');
-                main.innerHTML = '';
-                main.classList.remove('fade-in');
-                void main.offsetWidth;
-                main.classList.add('fade-in');
-
-                if (hash === '#home') {
-                    this.renderHome(main);
-                } else if (hash.startsWith('#view/')) {
-                    const slug = hash.split('/')[1];
-                    this.renderView(main, slug);
-                } else if (hash.startsWith('#edit/')) {
-                    const slug = hash.split('/')[1];
-                    this.renderEdit(main, slug);
-                } else if (hash === '#dashboard') {
-                    this.renderDashboard(main);
-                } else if (hash === '#login') {
-                    this.renderLogin(main);
-                } else if (hash === '#register') {
-                    this.renderRegister(main);
-                } else {
-                    this.renderHome(main);
-                }
-            },
-
-            navigate(route) {
-                window.location.hash = route;
-            },
-
-            showToast(message, type = 'success') {
-                const toast = document.getElementById('toast');
-                const icon = document.getElementById('toast-icon');
-                document.getElementById('toast-msg').textContent = message;
-                
-                if (type === 'error') {
-                    icon.className = 'fa-solid fa-circle-xmark text-red-400';
-                } else {
-                    icon.className = 'fa-solid fa-circle-check text-green-400';
-                }
-                
-                toast.classList.remove('translate-y-20', 'opacity-0');
-                setTimeout(() => {
-                    toast.classList.add('translate-y-20', 'opacity-0');
-                }, 3000);
-            },
-
-            // ============================================
-            // صفحة تسجيل الدخول
-            // ============================================
-            renderLogin(container) {
-                container.innerHTML = `
-                    <div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100 mt-10">
-                        <div class="text-center mb-6">
-                            <div class="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600 text-2xl">
-                                <i class="fa-solid fa-right-to-bracket"></i>
-                            </div>
-                            <h2 class="text-2xl font-bold text-gray-800">تسجيل الدخول</h2>
+            // التحقق من عدم وجود slug مكرر
+            if (pages.find(p => p.slug === slug)) {
+                return { success: false, error: 'هذا المعرف موجود بالفعل' };
+            }
+            
+            const newPage = {
+                slug: slug,
+                content: content,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            pages.push(newPage);
+            this.savePages(pages);
+            
+            return { success: true, page: newPage };
+        },
+        
+        // الحصول على صفحة
+        getPage(slug) {
+            const pages = this.getPages();
+            return pages.find(p => p.slug === slug) || null;
+        },
+        
+        // تحديث صفحة
+        updatePage(slug, content) {
+            const pages = this.getPages();
+            const index = pages.findIndex(p => p.slug === slug);
+            
+            if (index === -1) {
+                return { success: false, error: 'الصفحة غير موجودة' };
+            }
+            
+            pages[index].content = content;
+            pages[index].updatedAt = new Date().toISOString();
+            this.savePages(pages);
+            
+            return { success: true, page: pages[index] };
+        },
+        
+        // حذف صفحة
+        deletePage(slug) {
+            let pages = this.getPages();
+            pages = pages.filter(p => p.slug !== slug);
+            this.savePages(pages);
+            return { success: true };
+        },
+        
+        // ========================================
+        // دوال الواجهة
+        // ========================================
+        
+        showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const msg = document.getElementById('toast-msg');
+            
+            msg.textContent = message;
+            
+            if (type === 'error') {
+                icon.className = 'fa-solid fa-circle-xmark text-red-400';
+                toast.className = toast.className.replace('bg-gray-800', 'bg-red-800');
+            } else {
+                icon.className = 'fa-solid fa-circle-check text-green-400';
+                toast.className = toast.className.replace('bg-red-800', 'bg-gray-800');
+            }
+            
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        },
+        
+        navigate(route) {
+            window.location.hash = '#' + route;
+        },
+        
+        updateNav() {
+            const lockBtn = document.getElementById('lockBtn');
+            if (this.isUnlocked) {
+                lockBtn.classList.remove('hidden');
+            } else {
+                lockBtn.classList.add('hidden');
+            }
+        },
+        
+        // ========================================
+        // عرض الصفحات
+        // ========================================
+        
+        // صفحة تسجيل الدخول / إنشاء كلمة المرور
+        renderLogin(container) {
+            const hasPassword = this.hasStoredPassword();
+            
+            container.innerHTML = `
+                <div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100 mt-10">
+                    <div class="text-center mb-6">
+                        <div class="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fa-solid fa-lock text-2xl text-indigo-600"></i>
                         </div>
-                        <form id="loginForm" class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">البريد الإلكتروني</label>
-                                <input type="email" id="loginEmail" required class="block w-full px-4 py-3 rounded-md border border-gray-300" placeholder="your@email.com">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">كلمة المرور</label>
-                                <input type="password" id="loginPassword" required class="block w-full px-4 py-3 rounded-md border border-gray-300" placeholder="••••••••">
-                            </div>
-                            <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition font-bold shadow-md">
-                                دخول
-                            </button>
-                            <p class="text-center text-sm text-gray-600">
-                                ليس لديك حساب؟ <a href="#register" class="text-indigo-600 hover:underline font-bold">سجل الآن</a>
-                            </p>
-                        </form>
+                        <h2 class="text-2xl font-bold text-gray-800">
+                            ${hasPassword ? 'فتح التطبيق' : 'إنشاء كلمة مرور'}
+                        </h2>
+                        <p class="text-gray-500 mt-2 text-sm">
+                            ${hasPassword 
+                                ? 'أدخل كلمة المرور لفتح بياناتك المشفرة' 
+                                : 'أنشئ كلمة مرور قوية لتشفير بياناتك. لا يمكن استعادتها!'}
+                        </p>
                     </div>
-                `;
-
-                document.getElementById('loginForm').addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const email = document.getElementById('loginEmail').value;
-                    const password = document.getElementById('loginPassword').value;
-
-                    try {
-                        const data = await API.login(email, password);
-                        this.currentUser = data.user;
-                        this.updateUI();
-                        this.showToast('تم تسجيل الدخول بنجاح', 'success');
-                        this.navigate('dashboard');
-                    } catch (error) {
-                        this.showToast(error.message, 'error');
-                    }
-                });
-            },
-
-            // ============================================
-            // صفحة التسجيل
-            // ============================================
-            renderRegister(container) {
-                container.innerHTML = `
-                    <div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100 mt-10">
-                        <div class="text-center mb-6">
-                            <div class="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600 text-2xl">
-                                <i class="fa-solid fa-user-plus"></i>
-                            </div>
-                            <h2 class="text-2xl font-bold text-gray-800">إنشاء حساب</h2>
+                    
+                    <form id="passwordForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">كلمة المرور</label>
+                            <input type="password" id="password" required 
+                                class="block w-full px-4 py-3 rounded-md border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" 
+                                placeholder="${hasPassword ? 'أدخل كلمة المرور' : 'أنشئ كلمة مرور قوية (8 أحرف على الأقل)'}"
+                                minlength="${hasPassword ? '1' : '8'}">
                         </div>
-                        <form id="registerForm" class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">البريد الإلكتروني</label>
-                                <input type="email" id="registerEmail" required class="block w-full px-4 py-3 rounded-md border border-gray-300" placeholder="your@email.com">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">كلمة المرور</label>
-                                <input type="password" id="registerPassword" required minlength="8" class="block w-full px-4 py-3 rounded-md border border-gray-300" placeholder="8 أحرف على الأقل">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">تأكيد كلمة المرور</label>
-                                <input type="password" id="registerConfirmPassword" required minlength="8" class="block w-full px-4 py-3 rounded-md border border-gray-300" placeholder="••••••••">
-                            </div>
-                            <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition font-bold shadow-md">
-                                تسجيل
-                            </button>
-                            <p class="text-center text-sm text-gray-600">
-                                لديك حساب بالفعل؟ <a href="#login" class="text-indigo-600 hover:underline font-bold">دخول</a>
-                            </p>
-                        </form>
-                    </div>
-                `;
-
-                document.getElementById('registerForm').addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const email = document.getElementById('registerEmail').value;
-                    const password = document.getElementById('registerPassword').value;
-                    const confirmPassword = document.getElementById('registerConfirmPassword').value;
-
+                        
+                        ${!hasPassword ? `
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">تأكيد كلمة المرور</label>
+                            <input type="password" id="confirmPassword" required minlength="8" 
+                                class="block w-full px-4 py-3 rounded-md border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" 
+                                placeholder="أعد كتابة كلمة المرور">
+                        </div>
+                        ` : ''}
+                        
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition font-bold shadow-md">
+                            ${hasPassword ? 'فتح' : 'إنشاء'}
+                        </button>
+                        
+                        ${hasPassword ? `
+                        <button type="button" id="resetBtn" class="w-full bg-red-50 text-red-600 py-3 px-4 rounded-md hover:bg-red-100 transition font-bold border border-red-200">
+                            <i class="fa-solid fa-triangle-exclamation"></i> إعادة تعيين (حذف كل البيانات)
+                        </button>
+                        ` : ''}
+                    </form>
+                </div>
+            `;
+            
+            document.getElementById('passwordForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const password = document.getElementById('password').value;
+                
+                if (!hasPassword) {
+                    const confirmPassword = document.getElementById('confirmPassword').value;
                     if (password !== confirmPassword) {
                         this.showToast('كلمتا المرور غير متطابقتين', 'error');
                         return;
                     }
-
                     if (password.length < 8) {
                         this.showToast('كلمة المرور يجب أن تكون 8 أحرف على الأقل', 'error');
                         return;
                     }
-
-                    try {
-                        const data = await API.register(email, password);
-                        this.currentUser = data.user;
-                        this.updateUI();
-                        this.showToast('تم التسجيل بنجاح', 'success');
+                    this.setupPassword(password);
+                    this.navigate('home');
+                } else {
+                    if (this.unlock(password)) {
+                        this.showToast('تم الفتح بنجاح', 'success');
                         this.navigate('dashboard');
-                    } catch (error) {
-                        this.showToast(error.message, 'error');
+                    } else {
+                        this.showToast('كلمة المرور غير صحيحة', 'error');
+                    }
+                }
+            });
+            
+            if (hasPassword) {
+                document.getElementById('resetBtn').addEventListener('click', () => {
+                    if (confirm('هل أنت متأكد؟ سيتم حذف جميع البيانات المشفرة نهائياً!')) {
+                        localStorage.clear();
+                        this.showToast('تم حذف جميع البيانات', 'success');
+                        this.renderLogin(container);
                     }
                 });
-            },
-
-            // ============================================
-            // الصفحة الرئيسية (إنشاء صفحة جديدة)
-            // ============================================
-            renderHome(container) {
-                if (!this.currentUser) {
-                    container.innerHTML = `
-                        <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100 text-center">
-                            <h2 class="text-2xl font-bold mb-4 text-indigo-700">مرحباً بك في Rentry Clone</h2>
-                            <p class="text-gray-600 mb-6">يرجى تسجيل الدخول أو إنشاء حساب لإنشاء الصفحات وإدارتها.</p>
-                            <div class="flex gap-4 justify-center">
-                                <a href="#login" class="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 transition font-bold">دخول</a>
-                                <a href="#register" class="bg-gray-200 text-gray-800 px-6 py-3 rounded-md hover:bg-gray-300 transition font-bold">تسجيل</a>
-                            </div>
+            }
+        },
+        
+        // الصفحة الرئيسية (إنشاء صفحة جديدة)
+        renderHome(container) {
+            if (!this.isUnlocked) {
+                this.navigate('login');
+                return;
+            }
+            
+            container.innerHTML = `
+                <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100">
+                    <h2 class="text-2xl font-bold mb-6 text-indigo-700 flex items-center gap-2">
+                        <i class="fa-solid fa-plus-circle"></i> إنشاء صفحة جديدة
+                    </h2>
+                    <form id="createForm" class="space-y-5">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">معرف الصفحة</label>
+                            <input type="text" id="slug" required pattern="[a-zA-Z0-9_-]+" 
+                                class="block w-full px-4 py-3 rounded-md border border-gray-300 font-mono" 
+                                placeholder="my-page">
+                            <p class="text-xs text-gray-500 mt-1">أحرف إنجليزية، أرقام، وشرطات فقط (3-50 حرف)</p>
                         </div>
-                    `;
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">المحتوى</label>
+                            <textarea id="content" required rows="12" 
+                                class="block w-full px-4 py-3 rounded-md border border-gray-300 font-mono text-sm" 
+                                placeholder="اكتب محتوى صفحتك هنا..."></textarea>
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition font-bold shadow-md flex justify-center items-center gap-2">
+                            <i class="fa-solid fa-save"></i> حفظ ونشر
+                        </button>
+                    </form>
+                </div>
+            `;
+            
+            document.getElementById('createForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const slug = document.getElementById('slug').value.trim();
+                const content = document.getElementById('content').value;
+                
+                if (!/^[a-zA-Z0-9_-]{3,50}$/.test(slug)) {
+                    this.showToast('معرف غير صالح (أحرف إنجليزية وأرقام وشرطات فقط، 3-50 حرف)', 'error');
                     return;
                 }
-
+                
+                const result = this.createPage(slug, content);
+                if (result.success) {
+                    this.showToast('تم إنشاء الصفحة بنجاح!', 'success');
+                    this.navigate('view/' + slug);
+                } else {
+                    this.showToast(result.error, 'error');
+                }
+            });
+        },
+        
+        // عرض صفحة
+        renderView(container, slug) {
+            if (!this.isUnlocked) {
+                this.navigate('login');
+                return;
+            }
+            
+            const page = this.getPage(slug);
+            
+            if (!page) {
                 container.innerHTML = `
-                    <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100">
-                        <h2 class="text-2xl font-bold mb-6 text-indigo-700 flex items-center gap-2">
-                            <i class="fa-solid fa-plus-circle"></i> إنشاء صفحة جديدة
-                        </h2>
-                        <form id="createForm" class="space-y-5">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">معرف الصفحة (URL Slug)</label>
-                                <div class="flex">
-                                    <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                                        page/
-                                    </span>
-                                    <input type="text" id="slug" required pattern="[a-zA-Z0-9_-]+" 
-                                        class="flex-1 min-w-0 block w-full px-3 py-2 rounded-r-md border border-gray-300 font-mono" 
-                                        placeholder="my-page-name">
-                                </div>
-                                <p class="text-xs text-gray-500 mt-1">أحرف إنجليزية وأرقام وشرطات فقط (3-50 حرف).</p>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">المحتوى</label>
-                                <textarea id="content" required rows="10" 
-                                    class="block w-full px-3 py-2 rounded-md border border-gray-300 font-mono text-sm" 
-                                    placeholder="اكتب محتوى صفحتك هنا..."></textarea>
-                            </div>
-
-                            <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition font-bold shadow-md flex justify-center items-center gap-2">
-                                <i class="fa-solid fa-save"></i> حفظ ونشر الصفحة
-                            </button>
-                        </form>
+                    <div class="text-center py-20">
+                        <i class="fa-solid fa-circle-exclamation text-6xl text-gray-300 mb-4"></i>
+                        <h2 class="text-2xl font-bold text-gray-600">الصفحة غير موجودة</h2>
+                        <a href="#home" class="mt-4 inline-block text-indigo-600 hover:underline font-bold">العودة للرئيسية</a>
                     </div>
                 `;
-
-                document.getElementById('createForm').addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const slug = document.getElementById('slug').value.trim();
-                    const content = document.getElementById('content').value;
-
-                    if (!/^[a-zA-Z0-9_-]{3,50}$/.test(slug)) {
-                        this.showToast('معرف الصفحة غير صالح', 'error');
-                        return;
-                    }
-
-                    try {
-                        const data = await API.createPage(slug, content);
-                        // تخزين editToken في sessionStorage
-                        sessionStorage.setItem(`edit_token_${slug}`, data.page.editToken);
-                        this.showToast('تم إنشاء الصفحة بنجاح!', 'success');
-                        this.navigate(`view/${slug}`);
-                    } catch (error) {
-                        this.showToast(error.message, 'error');
-                    }
-                });
-            },
-
-            // ============================================
-            // عرض صفحة
-            // ============================================
-            async renderView(container, slug) {
-                try {
-                    const data = await API.getPage(slug);
-                    
-                    const baseUrl = window.location.origin + window.location.pathname;
-                    const jsonUrl = `${baseUrl}api/json/${slug}`;
-
-                    container.innerHTML = `
-                        <div class="max-w-3xl mx-auto">
-                            <div class="bg-white p-8 rounded-xl shadow-md border border-gray-100 mb-6">
-                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-gray-100 pb-4 gap-4">
-                                    <div>
-                                        <h1 class="text-3xl font-bold text-gray-800 mb-1 font-mono">${data.slug}</h1>
-                                        <p class="text-sm text-gray-500">تاريخ الإنشاء: ${new Date(data.createdAt).toLocaleDateString('ar-IQ')}</p>
-                                    </div>
-                                    <button onclick="app.navigate('edit/${data.slug}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-5 py-2 rounded-lg transition flex items-center gap-2 shadow-sm font-bold">
-                                        <i class="fa-solid fa-pen"></i> تعديل
-                                    </button>
-                                </div>
-                                <div class="prose max-w-none text-gray-700 whitespace-pre-wrap font-mono text-sm bg-gray-50 p-6 rounded-lg border border-gray-200 leading-relaxed">
-                                    ${data.content}
-                                </div>
+                return;
+            }
+            
+            container.innerHTML = `
+                <div class="max-w-4xl mx-auto">
+                    <div class="bg-white rounded-xl shadow-md border border-gray-100 mb-6">
+                        <div class="p-6 border-b border-gray-100 flex justify-between items-center flex-wrap gap-3">
+                            <div>
+                                <h1 class="text-2xl font-bold font-mono text-indigo-700">${page.slug}</h1>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    تم الإنشاء: ${new Date(page.createdAt).toLocaleString('ar-IQ')}
+                                </p>
                             </div>
-
-                            <div class="bg-indigo-50 border border-indigo-100 p-6 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4">
-                                <div class="flex items-center gap-4">
-                                    <div class="bg-indigo-100 p-3 rounded-full text-indigo-600">
-                                        <i class="fa-solid fa-code text-xl"></i>
-                                    </div>
-                                    <div>
-                                        <h3 class="font-bold text-indigo-900">رابط JSON</h3>
-                                        <p class="text-sm text-indigo-700">استخدم هذا الرابط للوصول إلى محتوى الصفحة بصيغة JSON.</p>
-                                    </div>
-                                </div>
-                                <button onclick="app.copyJsonLink('${jsonUrl}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg transition flex items-center gap-2 shadow-md whitespace-nowrap font-bold">
-                                    <i class="fa-regular fa-copy"></i> نسخ الرابط
+                            <div class="flex gap-2">
+                                <button onclick="app.navigate('edit/${page.slug}')" 
+                                    class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition font-bold text-sm">
+                                    <i class="fa-solid fa-pen"></i> تعديل
+                                </button>
+                                <button onclick="app.copyContent('${page.slug}')" 
+                                    class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition font-bold text-sm">
+                                    <i class="fa-solid fa-copy"></i> نسخ
                                 </button>
                             </div>
                         </div>
-                    `;
-                } catch (error) {
-                    container.innerHTML = `
-                        <div class="text-center py-20">
-                            <i class="fa-solid fa-circle-exclamation text-6xl text-gray-300 mb-4"></i>
-                            <h2 class="text-2xl font-bold text-gray-600">الصفحة غير موجودة</h2>
-                            <a href="#home" class="mt-4 inline-block text-indigo-600 hover:underline font-bold">العودة للرئيسية</a>
+                        <div class="p-6">
+                            <pre class="text-gray-700 font-mono text-sm bg-gray-50 p-4 rounded-lg leading-relaxed">${page.content}</pre>
                         </div>
-                    `;
-                }
-            },
-
-            copyJsonLink(url) {
-                navigator.clipboard.writeText(url).then(() => {
-                    this.showToast('تم نسخ الرابط بنجاح!', 'success');
-                }).catch(() => {
-                    prompt('انسخ الرابط يدوياً:', url);
+                    </div>
+                </div>
+            `;
+        },
+        
+        // نسخ محتوى الصفحة
+        copyContent(slug) {
+            const page = this.getPage(slug);
+            if (page) {
+                navigator.clipboard.writeText(page.content).then(() => {
+                    this.showToast('تم نسخ المحتوى!', 'success');
                 });
-            },
-
-            // ============================================
-            // تعديل صفحة
-            // ============================================
-            async renderEdit(container, slug) {
-                if (!this.currentUser) {
-                    this.navigate('login');
-                    return;
-                }
-
-                try {
-                    const data = await API.getPage(slug);
-                    const editToken = sessionStorage.getItem(`edit_token_${slug}`) || '';
-
-                    container.innerHTML = `
-                        <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100">
-                            <h2 class="text-2xl font-bold mb-6 text-yellow-600 flex items-center gap-2">
-                                <i class="fa-solid fa-pen-to-square"></i> تعديل صفحة: <span class="font-mono text-gray-700">${slug}</span>
-                            </h2>
-                            
-                            <form id="editForm" class="space-y-5">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">المحتوى الجديد</label>
-                                    <textarea id="editContent" required rows="12" 
-                                        class="block w-full px-3 py-2 rounded-md border border-gray-300 font-mono text-sm">${data.content}</textarea>
-                                </div>
-                                <div class="flex gap-3">
-                                    <button type="submit" class="flex-1 bg-yellow-500 text-white py-3 px-4 rounded-md hover:bg-yellow-600 transition font-bold shadow-md flex justify-center items-center gap-2">
-                                        <i class="fa-solid fa-save"></i> حفظ التعديلات
-                                    </button>
-                                    <button type="button" onclick="app.navigate('view/${slug}')" class="px-6 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition text-gray-700 font-bold">
-                                        إلغاء
-                                    </button>
-                                </div>
-                            </form>
+            }
+        },
+        
+        // تعديل صفحة
+        renderEdit(container, slug) {
+            if (!this.isUnlocked) {
+                this.navigate('login');
+                return;
+            }
+            
+            const page = this.getPage(slug);
+            if (!page) {
+                this.navigate('home');
+                return;
+            }
+            
+            container.innerHTML = `
+                <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100">
+                    <h2 class="text-2xl font-bold mb-6 text-yellow-600 flex items-center gap-2">
+                        <i class="fa-solid fa-pen-to-square"></i> تعديل: 
+                        <span class="font-mono">${page.slug}</span>
+                    </h2>
+                    <form id="editForm" class="space-y-5">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">المحتوى</label>
+                            <textarea id="editContent" required rows="12" 
+                                class="block w-full px-4 py-3 rounded-md border border-gray-300 font-mono text-sm">${page.content}</textarea>
                         </div>
-                    `;
-
-                    document.getElementById('editForm').addEventListener('submit', async (e) => {
-                        e.preventDefault();
-                        const newContent = document.getElementById('editContent').value;
-
-                        try {
-                            await API.updatePage(slug, newContent, editToken);
-                            this.showToast('تم تحديث المحتوى بنجاح!', 'success');
-                            this.navigate(`view/${slug}`);
-                        } catch (error) {
-                            this.showToast(error.message, 'error');
-                        }
-                    });
-                } catch (error) {
-                    this.showToast(error.message, 'error');
-                    this.navigate('home');
-                }
-            },
-
-            // ============================================
-            // لوحة التحكم
-            // ============================================
-            async renderDashboard(container) {
-                if (!this.currentUser) {
-                    container.innerHTML = `
-                        <div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100 text-center mt-10">
-                            <h2 class="text-2xl font-bold mb-4 text-indigo-700">لوحة التحكم</h2>
-                            <p class="text-gray-600 mb-6">يرجى تسجيل الدخول للوصول إلى لوحة التحكم.</p>
-                            <a href="#login" class="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 transition font-bold inline-block">دخول</a>
+                        <div class="flex gap-3">
+                            <button type="submit" class="flex-1 bg-yellow-500 text-white py-3 px-4 rounded-md hover:bg-yellow-600 transition font-bold shadow-md">
+                                <i class="fa-solid fa-save"></i> حفظ التعديلات
+                            </button>
+                            <button type="button" onclick="app.navigate('view/${slug}')" 
+                                class="px-6 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition text-gray-700 font-bold">
+                                إلغاء
+                            </button>
                         </div>
-                    `;
-                    return;
+                    </form>
+                </div>
+            `;
+            
+            document.getElementById('editForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const content = document.getElementById('editContent').value;
+                const result = this.updatePage(slug, content);
+                
+                if (result.success) {
+                    this.showToast('تم تحديث الصفحة بنجاح!', 'success');
+                    this.navigate('view/' + slug);
+                } else {
+                    this.showToast(result.error, 'error');
                 }
-
-                container.innerHTML = `
-                    <div class="max-w-5xl mx-auto">
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                            <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                                <i class="fa-solid fa-gauge-high text-indigo-600"></i> لوحة التحكم
-                            </h2>
-                            <a href="#home" class="bg-indigo-600 text-white px-4 py-2 rounded-lg transition text-sm font-bold flex items-center gap-2">
-                                <i class="fa-solid fa-plus"></i> صفحة جديدة
-                            </a>
-                        </div>
-
-                        <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+            });
+        },
+        
+        // لوحة التحكم
+        renderDashboard(container) {
+            if (!this.isUnlocked) {
+                this.navigate('login');
+                return;
+            }
+            
+            const pages = this.getPages();
+            
+            container.innerHTML = `
+                <div class="max-w-6xl mx-auto">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                            <i class="fa-solid fa-gauge-high text-indigo-600"></i> لوحة التحكم
+                        </h2>
+                        <a href="#home" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition font-bold text-sm">
+                            <i class="fa-solid fa-plus"></i> صفحة جديدة
+                        </a>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+                        ${pages.length === 0 ? `
+                            <div class="text-center py-12">
+                                <i class="fa-solid fa-file-circle-plus text-5xl text-gray-300 mb-4"></i>
+                                <p class="text-gray-500 mb-4">لا توجد صفحات بعد</p>
+                                <a href="#home" class="text-indigo-600 hover:underline font-bold">إنشاء أول صفحة</a>
+                            </div>
+                        ` : `
                             <div class="overflow-x-auto">
-                                <table class="w-full text-left">
-                                    <thead class="bg-gray-50 border-b border-gray-200">
-                                        <tr>
-                                            <th class="py-4 px-4 text-sm font-bold text-gray-600">المعرف</th>
-                                            <th class="py-4 px-4 text-sm font-bold text-gray-600">تاريخ الإنشاء</th>
-                                            <th class="py-4 px-4 text-sm font-bold text-gray-600">آخر تحديث</th>
-                                            <th class="py-4 px-4 text-sm font-bold text-gray-600">إجراءات</th>
+                                <table class="w-full">
+                                    <thead>
+                                        <tr class="bg-gray-50 border-b border-gray-200">
+                                            <th class="py-4 px-6 text-right text-sm font-bold text-gray-600">المعرف</th>
+                                            <th class="py-4 px-6 text-right text-sm font-bold text-gray-600">تاريخ الإنشاء</th>
+                                            <th class="py-4 px-6 text-right text-sm font-bold text-gray-600">آخر تحديث</th>
+                                            <th class="py-4 px-6 text-right text-sm font-bold text-gray-600">إجراءات</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="dashboardTableBody" class="divide-y divide-gray-100">
-                                        <tr><td colspan="4" class="text-center py-12 text-gray-500">جاري التحميل...</td></tr>
+                                    <tbody class="divide-y divide-gray-100">
+                                        ${pages.map(page => `
+                                            <tr class="hover:bg-gray-50 transition">
+                                                <td class="py-4 px-6 font-mono text-sm text-indigo-600 font-bold">
+                                                    ${page.slug}
+                                                </td>
+                                                <td class="py-4 px-6 text-sm text-gray-600">
+                                                    ${new Date(page.createdAt).toLocaleDateString('ar-IQ')}
+                                                </td>
+                                                <td class="py-4 px-6 text-sm text-gray-600">
+                                                    ${new Date(page.updatedAt).toLocaleDateString('ar-IQ')}
+                                                </td>
+                                                <td class="py-4 px-6">
+                                                    <div class="flex gap-2">
+                                                        <button onclick="app.navigate('view/${page.slug}')" 
+                                                            class="text-blue-600 hover:bg-blue-50 p-2 rounded transition" title="عرض">
+                                                            <i class="fa-solid fa-eye"></i>
+                                                        </button>
+                                                        <button onclick="app.navigate('edit/${page.slug}')" 
+                                                            class="text-yellow-600 hover:bg-yellow-50 p-2 rounded transition" title="تعديل">
+                                                            <i class="fa-solid fa-pen"></i>
+                                                        </button>
+                                                        <button onclick="app.deletePageConfirm('${page.slug}')" 
+                                                            class="text-red-600 hover:bg-red-50 p-2 rounded transition" title="حذف">
+                                                            <i class="fa-solid fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
+                        `}
                     </div>
-                `;
-
-                try {
-                    const pages = await API.getDashboard();
-                    const tbody = document.getElementById('dashboardTableBody');
-                    
-                    if (pages.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-12 text-gray-500">لا توجد صفحات بعد.</td></tr>`;
-                        return;
-                    }
-
-                    let rows = '';
-                    pages.forEach(page => {
-                        const baseUrl = window.location.origin + window.location.pathname;
-                        const jsonUrl = `${baseUrl}api/json/${page.slug}`;
-                        
-                        rows += `
-                            <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
-                                <td class="py-4 px-4 font-mono text-sm text-indigo-600 font-bold">${page.slug}</td>
-                                <td class="py-4 px-4 text-sm text-gray-600">${new Date(page.createdAt).toLocaleDateString('ar-IQ')}</td>
-                                <td class="py-4 px-4 text-sm text-gray-600">${new Date(page.updatedAt).toLocaleDateString('ar-IQ')}</td>
-                                <td class="py-4 px-4">
-                                    <div class="flex gap-2">
-                                        <button onclick="app.navigate('view/${page.slug}')" class="text-blue-600 hover:bg-blue-50 p-2 rounded transition" title="عرض">
-                                            <i class="fa-solid fa-eye"></i>
-                                        </button>
-                                        <button onclick="app.navigate('edit/${page.slug}')" class="text-yellow-600 hover:bg-yellow-50 p-2 rounded transition" title="تعديل">
-                                            <i class="fa-solid fa-pen"></i>
-                                        </button>
-                                        <button onclick="app.copyJsonLink('${jsonUrl}')" class="text-green-600 hover:bg-green-50 p-2 rounded transition" title="نسخ رابط JSON">
-                                            <i class="fa-solid fa-code"></i>
-                                        </button>
-                                        <button onclick="app.deleteEntry('${page.slug}')" class="text-red-600 hover:bg-red-50 p-2 rounded transition" title="حذف">
-                                            <i class="fa-solid fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        `;
-                    });
-                    
-                    tbody.innerHTML = rows;
-                } catch (error) {
-                    document.getElementById('dashboardTableBody').innerHTML = 
-                        `<tr><td colspan="4" class="text-center py-12 text-red-500">خطأ في تحميل لوحة التحكم</td></tr>`;
-                }
-            },
-
-            async deleteEntry(slug) {
-                if (!confirm('هل أنت متأكد من حذف هذه الصفحة؟ لا يمكن التراجع عن هذا الإجراء.')) {
-                    return;
-                }
-
-                try {
-                    await API.deletePage(slug);
-                    this.showToast('تم حذف الصفحة بنجاح', 'success');
-                    this.renderDashboard(document.getElementById('app'));
-                } catch (error) {
-                    this.showToast(error.message, 'error');
-                }
+                </div>
+            `;
+        },
+        
+        // تأكيد حذف صفحة
+        deletePageConfirm(slug) {
+            if (confirm(`هل أنت متأكد من حذف صفحة "${slug}"؟ لا يمكن التراجع عن هذا الإجراء.`)) {
+                this.deletePage(slug);
+                this.showToast('تم حذف الصفحة بنجاح', 'success');
+                this.renderDashboard(document.getElementById('app'));
             }
-        };
+        },
+        
+        // ========================================
+        // التوجيه
+        // ========================================
+        handleRouting() {
+            const hash = window.location.hash || '#login';
+            const main = document.getElementById('app');
+            
+            // تحديث حالة القفل
+            this.updateNav();
+            
+            // إعادة تحميل الصفحة بتأثير
+            main.innerHTML = '';
+            main.classList.remove('fade-in');
+            void main.offsetWidth;
+            main.classList.add('fade-in');
+            
+            // توجيه حسب الـ hash
+            if (hash === '#login') {
+                this.renderLogin(main);
+            } else if (!this.isUnlocked) {
+                // أي صفحة أخرى تتطلب الفتح
+                this.navigate('login');
+            } else if (hash === '#home') {
+                this.renderHome(main);
+            } else if (hash === '#dashboard') {
+                this.renderDashboard(main);
+            } else if (hash.startsWith('#view/')) {
+                const slug = hash.replace('#view/', '');
+                this.renderView(main, slug);
+            } else if (hash.startsWith('#edit/')) {
+                const slug = hash.replace('#edit/', '');
+                this.renderEdit(main, slug);
+            } else {
+                this.renderHome(main);
+            }
+        },
+        
+        // ========================================
+        // بدء التطبيق
+        // ========================================
+        init() {
+            // الاستماع لتغييرات الـ hash
+            window.addEventListener('hashchange', () => this.handleRouting());
+            
+            // التحقق من وجود كلمة مرور
+            if (this.hasStoredPassword()) {
+                // توجيه إلى صفحة تسجيل الدخول
+                if (!window.location.hash || window.location.hash === '#') {
+                    window.location.hash = '#login';
+                }
+            } else {
+                // توجيه إلى إنشاء كلمة مرور
+                window.location.hash = '#login';
+            }
+            
+            this.handleRouting();
+        }
+    };
 
-        // تشغيل التطبيق
-        document.addEventListener('DOMContentLoaded', () => {
-            app.init();
-        });
+    // تشغيل التطبيق عند تحميل الصفحة
+    document.addEventListener('DOMContentLoaded', () => {
+        app.init();
+    });
     </script>
 </body>
 </html>
