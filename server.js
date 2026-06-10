@@ -1,69 +1,123 @@
-// تحميل البيانات المخزنة محليًا
-let storedData = JSON.parse(localStorage.getItem('userData')) || [];
+const express = require('express');
+const shortid = require('shortid');
+const path = require('path');
+const helmet = require('helmet');
+const compression = require('compression');
 
-function renderTable() {
-    const tbody = document.querySelector('#dataTable tbody');
-    tbody.innerHTML = '';
-    storedData.forEach((item, index) => {
-        const row = tbody.insertRow();
-        row.insertCell(0).innerText = item.key;
-        row.insertCell(1).innerText = item.value;
-        const delCell = row.insertCell(2);
-        const delBtn = document.createElement('button');
-        delBtn.innerText = '✖️ حذف';
-        delBtn.onclick = () => {
-            storedData.splice(index, 1);
-            localStorage.setItem('userData', JSON.stringify(storedData));
-            renderTable();
-            document.getElementById('jsonLinkBox').style.display = 'none';
-        };
-        delCell.appendChild(delBtn);
+const app = express();
+app.use(helmet());
+app.use(compression());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// تخزين البيانات (في الذاكرة - استخدم قاعدة بيانات للإنتاج)
+const notes = new Map();
+
+// واجهات API
+app.post('/api/create', (req, res) => {
+    const { content, password } = req.body;
+    const id = shortid.generate();
+    const createdAt = Date.now();
+    
+    notes.set(id, {
+        content,
+        password: password || null,
+        createdAt,
+        views: 0
     });
-}
+    
+    res.json({ 
+        url: `${req.protocol}://${req.get('host')}/${id}`,
+        jsonUrl: `${req.protocol}://${req.get('host')}/api/json/${id}`,
+        id 
+    });
+});
 
-document.getElementById('addBtn').onclick = () => {
-    const key = document.getElementById('keyInput').value.trim();
-    const value = document.getElementById('valueInput').value.trim();
-    if (key === '' || value === '') {
-        alert('الرجاء إدخال المفتاح والقيمة');
-        return;
+// الحصول على JSON للمشاركة الخارجية
+app.get('/api/json/:id', (req, res) => {
+    const note = notes.get(req.params.id);
+    if (!note) {
+        return res.status(404).json({ error: 'الملاحظة غير موجودة' });
     }
-    storedData.push({ key, value });
-    localStorage.setItem('userData', JSON.stringify(storedData));
-    renderTable();
-    document.getElementById('keyInput').value = '';
-    document.getElementById('valueInput').value = '';
-    document.getElementById('jsonLinkBox').style.display = 'none';
-};
+    
+    note.views++;
+    res.json({
+        id: req.params.id,
+        content: note.content,
+        createdAt: note.createdAt,
+        views: note.views,
+        // ميزة إضافية: إحصائيات إضافية
+        metadata: {
+            size: note.content.length,
+            lines: note.content.split('\n').length,
+            lastAccessed: Date.now()
+        }
+    });
+});
 
-document.getElementById('clearAllBtn').onclick = () => {
-    if (confirm('هل أنت متأكد من مسح كل البيانات؟')) {
-        storedData = [];
-        localStorage.setItem('userData', JSON.stringify(storedData));
-        renderTable();
-        document.getElementById('jsonLinkBox').style.display = 'none';
+// تحديث المحتوى عبر API
+app.put('/api/update/:id', (req, res) => {
+    const note = notes.get(req.params.id);
+    if (!note) {
+        return res.status(404).json({ error: 'الملاحظة غير موجودة' });
     }
-};
-
-// تحويل البيانات إلى JSON وإنشاء رابط blob://
-document.getElementById('exportJsonBtn').onclick = () => {
-    if (storedData.length === 0) {
-        alert('لا توجد بيانات لتصديرها');
-        return;
+    
+    const { content, password } = req.body;
+    if (note.password && note.password !== password) {
+        return res.status(401).json({ error: 'كلمة المرور غير صحيحة' });
     }
-    const jsonOutput = JSON.stringify(storedData, null, 2);
-    const blob = new Blob([jsonOutput], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const linkInput = document.getElementById('jsonLink');
-    linkInput.value = url;
-    document.getElementById('jsonLinkBox').style.display = 'block';
-};
+    
+    note.content = content;
+    note.updatedAt = Date.now();
+    notes.set(req.params.id, note);
+    
+    res.json({ success: true, id: req.params.id });
+});
 
-document.getElementById('copyLinkBtn').onclick = () => {
-    const linkInput = document.getElementById('jsonLink');
-    linkInput.select();
-    document.execCommand('copy');
-    alert('تم نسخ الرابط! يمكنك استخدامه في مشروعك الخارجي لقراءة JSON');
-};
+// حذف الملاحظة عبر API
+app.delete('/api/delete/:id', (req, res) => {
+    const { password } = req.body;
+    const note = notes.get(req.params.id);
+    
+    if (!note) return res.status(404).json({ error: 'غير موجود' });
+    if (note.password && note.password !== password) {
+        return res.status(401).json({ error: 'كلمة المرور غير صحيحة' });
+    }
+    
+    notes.delete(req.params.id);
+    res.json({ success: true });
+});
 
-renderTable();
+// عرض الصفحة الرئيسية
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// عرض الملاحظة
+app.get('/:id', (req, res) => {
+    const note = notes.get(req.params.id);
+    if (!note) {
+        return res.status(404).send('الملاحظة غير موجودة');
+    }
+    note.views++;
+    res.sendFile(path.join(__dirname, 'public', 'view.html'));
+});
+
+// API للبحث
+app.get('/api/search/:term', (req, res) => {
+    const term = req.params.term.toLowerCase();
+    const results = [];
+    
+    for (const [id, note] of notes.entries()) {
+        if (note.content.toLowerCase().includes(term)) {
+            results.push({ id, preview: note.content.substring(0, 100), createdAt: note.createdAt });
+        }
+    }
+    
+    res.json(results);
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`الخادم يعمل على http://localhost:${PORT}`);
+});
