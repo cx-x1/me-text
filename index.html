@@ -1,382 +1,1073 @@
 <!DOCTYPE html>
-<html lang="ar" dir="ltr">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JSON API Pure | تخزين وتعديل المحتوى برمز</title>
-    <!-- لا يوجد أي CSS أو HTML زائد في صفحة JSON الخالصة -->
-    <style>
-        /* فقط للواجهة التحريرية - صفحة JSON ستكون خالية تماماً من HTML */
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rentry — Markdown Pastebin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #1A1A2E;
+    --ink-soft: #4A4A6A;
+    --accent: #2563EB;
+    --accent-hover: #1D4ED8;
+    --surface: #FAFAFA;
+    --border: #E2E8F0;
+    --border-focus: #93C5FD;
+    --code-bg: #F1F5F9;
+    --danger: #DC2626;
+    --success: #16A34A;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--surface);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* NAV */
+  nav {
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--ink);
+    text-decoration: none;
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--accent); }
+
+  .nav-links {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .nav-link {
+    font-size: 13px;
+    color: var(--ink-soft);
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-family: var(--sans);
+  }
+  .nav-link:hover { background: var(--code-bg); color: var(--ink); }
+
+  /* VIEWS */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ─── HOME / EDITOR ─── */
+  .editor-shell {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    width: 100%;
+  }
+
+  .editor-header {
+    margin-bottom: 24px;
+  }
+
+  .editor-title {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.8px;
+    margin-bottom: 6px;
+    color: var(--ink);
+  }
+  .editor-sub {
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+  .editor-sub a { color: var(--accent); text-decoration: none; }
+  .editor-sub a:hover { text-decoration: underline; }
+
+  /* URL row */
+  .url-row {
+    display: flex;
+    gap: 0;
+    margin-bottom: 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+    transition: border-color 0.2s;
+  }
+  .url-row:focus-within { border-color: var(--border-focus); }
+
+  .url-prefix {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--code-bg);
+    color: var(--ink-soft);
+    padding: 10px 12px;
+    border-right: 1.5px solid var(--border);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+  }
+
+  .url-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 10px 12px;
+    color: var(--ink);
+    background: transparent;
+  }
+  .url-input::placeholder { color: #B0B7C3; }
+
+  /* Edit key */
+  .key-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .key-label {
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .key-input {
+    flex: 1;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink);
+    outline: none;
+    background: #fff;
+    transition: border-color 0.2s;
+  }
+  .key-input:focus { border-color: var(--border-focus); }
+
+  /* Textarea toolbar */
+  .editor-toolbar {
+    display: flex;
+    gap: 4px;
+    padding: 6px 8px;
+    border: 1.5px solid var(--border);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    background: var(--code-bg);
+    flex-wrap: wrap;
+  }
+
+  .tb-btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 4px 9px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: none;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    font-weight: 500;
+  }
+  .tb-btn:hover { background: #fff; border-color: var(--border); color: var(--ink); }
+  .tb-btn.active { background: #fff; border-color: var(--accent); color: var(--accent); }
+
+  .tb-sep { width: 1px; background: var(--border); margin: 3px 2px; }
+
+  .content-area {
+    position: relative;
+  }
+
+  #editor {
+    width: 100%;
+    min-height: 340px;
+    border: 1.5px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--ink);
+    resize: vertical;
+    outline: none;
+    background: #fff;
+    transition: border-color 0.2s;
+    display: block;
+  }
+  #editor:focus { border-color: var(--border-focus); }
+
+  /* Preview pane */
+  #preview-pane {
+    display: none;
+    min-height: 340px;
+    border: 1.5px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 20px 24px;
+    background: #fff;
+    font-size: 15px;
+    line-height: 1.75;
+  }
+
+  /* Markdown preview styles */
+  #preview-pane h1, #preview-pane h2, #preview-pane h3 {
+    font-weight: 600; margin: 1.2em 0 0.4em; letter-spacing: -0.4px;
+  }
+  #preview-pane h1 { font-size: 1.75em; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  #preview-pane h2 { font-size: 1.35em; }
+  #preview-pane h3 { font-size: 1.1em; }
+  #preview-pane p { margin: 0.7em 0; }
+  #preview-pane a { color: var(--accent); }
+  #preview-pane code {
+    font-family: var(--mono); font-size: 0.88em;
+    background: var(--code-bg); padding: 2px 6px; border-radius: 4px;
+  }
+  #preview-pane pre {
+    background: var(--code-bg); border-radius: 8px; padding: 14px 16px;
+    overflow-x: auto; margin: 1em 0;
+  }
+  #preview-pane pre code { background: none; padding: 0; }
+  #preview-pane blockquote {
+    border-left: 3px solid var(--accent); margin: 1em 0;
+    padding: 4px 0 4px 16px; color: var(--ink-soft);
+  }
+  #preview-pane ul, #preview-pane ol { padding-left: 1.5em; margin: 0.6em 0; }
+  #preview-pane li { margin: 0.25em 0; }
+  #preview-pane hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+  #preview-pane table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 14px; }
+  #preview-pane th, #preview-pane td { border: 1px solid var(--border); padding: 7px 12px; text-align: left; }
+  #preview-pane th { background: var(--code-bg); font-weight: 600; }
+  #preview-pane img { max-width: 100%; border-radius: 6px; }
+
+  /* char counter */
+  .editor-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+  }
+  .char-count { font-size: 12px; color: #B0B7C3; font-family: var(--mono); }
+
+  /* Submit */
+  .submit-row {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: var(--sans);
+    transition: background 0.15s, transform 0.1s;
+  }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { background: #93C5FD; cursor: not-allowed; }
+
+  .btn-ghost {
+    background: none;
+    color: var(--ink-soft);
+    border: 1.5px solid var(--border);
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: var(--sans);
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ─── PASTE VIEW ─── */
+  .paste-shell {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+    width: 100%;
+  }
+
+  .paste-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .paste-url-badge {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .paste-url-badge strong { color: var(--ink); }
+
+  .paste-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .btn-sm {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: #fff;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-family: var(--sans);
+    font-weight: 500;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-sm.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+  .paste-content {
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 28px 32px;
+    background: #fff;
+    min-height: 200px;
+    font-size: 15px;
+    line-height: 1.75;
+  }
+
+  /* Raw view */
+  #raw-content {
+    display: none;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    background: var(--code-bg);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-all;
+    min-height: 200px;
+  }
+
+  /* ─── MODAL ─── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: #fff;
+    border-radius: 12px;
+    padding: 28px;
+    width: 100%;
+    max-width: 400px;
+    margin: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  }
+  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .modal p { font-size: 13px; color: var(--ink-soft); margin-bottom: 16px; line-height: 1.5; }
+
+  .modal-input {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: var(--mono);
+    font-size: 13px;
+    outline: none;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+  .modal-input:focus { border-color: var(--border-focus); }
+
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+  /* ─── TOAST ─── */
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 13px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    z-index: 300;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    font-weight: 500;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--danger); }
+
+  /* ─── FOOTER ─── */
+  footer {
+    margin-top: auto;
+    border-top: 1px solid var(--border);
+    padding: 18px 24px;
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    font-size: 12px;
+    color: #B0B7C3;
+    background: #fff;
+    flex-wrap: wrap;
+  }
+  footer a { color: #B0B7C3; text-decoration: none; }
+  footer a:hover { color: var(--ink-soft); }
+
+  /* ─── ALL PASTES LIST ─── */
+  .list-shell {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    width: 100%;
+  }
+  .list-title { font-size: 20px; font-weight: 600; margin-bottom: 20px; letter-spacing: -0.4px; }
+
+  .paste-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    text-decoration: none;
+    color: inherit;
+  }
+  .paste-row:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(37,99,235,0.08); }
+
+  .paste-row-url {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 500;
+    min-width: 120px;
+  }
+  .paste-row-preview {
+    flex: 1;
+    font-size: 13px;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .paste-row-time {
+    font-size: 11px;
+    color: #B0B7C3;
+    font-family: var(--mono);
+    white-space: nowrap;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--ink-soft);
+  }
+  .empty-state p { font-size: 14px; margin-top: 8px; }
+
+  /* Cursor blink on load */
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+  .cursor-hint { display: inline-block; width: 2px; height: 1em; background: var(--accent); animation: blink 1s step-end infinite; vertical-align: text-bottom; margin-left: 1px; }
+
+  @media (max-width: 600px) {
+    .editor-title { font-size: 22px; }
+    .paste-content { padding: 18px; }
+    .submit-row { flex-direction: column; align-items: flex-start; }
+  }
+</style>
 </head>
 <body>
-    <!-- 
-        =================================================================
-        النظام يعمل على مبدأ:
-        1. واجهة تحرير (هذه الصفحة) تسمح بإنشاء أو تعديل محتوى باستخدام "كود"
-        2. نقطة JSON API: ?api=json&code=XXXX  → تعرض JSON خالص بدون أي HTML
-        3. كل المحتوى يُخزن في localStorage ويمكن استرجاعه وتعديله لاحقاً
-        4. صفحة JSON مناسبة لاستدعاء خارجي (curl, fetch, python, أي شيء)
-        =================================================================
-    -->
-    
-    <div id="editor-app" style="max-width: 900px; margin: 2rem auto; padding: 1.5rem; font-family: system-ui, -apple-system, sans-serif; background: #0d1117; color: #e6edf3; border-radius: 24px;">
-        <h1 style="font-size: 1.8rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 10px;">
-            <span style="background: #238636; padding: 0.3rem 0.8rem; border-radius: 40px; font-size: 0.9rem;">JSON API</span>
-            تخزين وتعديل المحتوى برمز
-        </h1>
-        <p style="color: #8b949e; margin-bottom: 2rem;">🔑 قم بإنشاء "كود" خاص بك، احفظ المحتوى، ثم استخدم الرابط <code style="background:#21262d;padding:2px 8px;border-radius:8px;">?api=json&code=كودك</code> للحصول على JSON خالص.</p>
-        
-        <div style="background: #161b22; border-radius: 20px; padding: 1.8rem; border: 1px solid #30363d;">
-            <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; font-weight: 600; margin-bottom: 8px;">📛 الكود (slug / معرف فريد)</label>
-                <input type="text" id="codeInput" placeholder="مثال: my-config-v1, api-settings, user_123" 
-                    style="width: 100%; padding: 12px 16px; background: #0d1117; border: 1px solid #30363d; border-radius: 14px; color: #ffffff; font-family: monospace; font-size: 1rem;">
-                <small style="color: #8b949e;">أحرف إنجليزية، أرقام، _ و - فقط. يمكنك استخدامه لاحقاً لتعديل المحتوى.</small>
-            </div>
-            
-            <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; font-weight: 600; margin-bottom: 8px;">✏️ المحتوى (أي نص أو JSON أو كود)</label>
-                <textarea id="contentInput" rows="8" placeholder='{"message": "مرحباً", "version": 1.0, "data": "أي محتوى تريد حفظه وتعديله لاحقاً"}' 
-                    style="width: 100%; padding: 12px 16px; background: #0d1117; border: 1px solid #30363d; border-radius: 14px; color: #e6edf3; font-family: monospace; font-size: 0.9rem; resize: vertical;"></textarea>
-            </div>
-            
-            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 2rem;">
-                <button id="saveBtn" style="background: #238636; border: none; padding: 10px 28px; border-radius: 40px; font-weight: bold; color: white; cursor: pointer; font-size: 1rem; display: inline-flex; align-items: center; gap: 8px;">💾 حفظ أو تحديث المحتوى</button>
-                <button id="loadBtn" style="background: #1f6feb; border: none; padding: 10px 28px; border-radius: 40px; font-weight: bold; color: white; cursor: pointer; font-size: 1rem; display: inline-flex; align-items: center; gap: 8px;">📂 تحميل المحتوى الحالي</button>
-                <button id="viewJsonBtn" style="background: #30363d; border: 1px solid #58a6ff; padding: 10px 28px; border-radius: 40px; font-weight: bold; color: #58a6ff; cursor: pointer; font-size: 1rem;">🔗 فتح JSON API (صفحة نقية)</button>
-            </div>
-            
-            <div id="apiUrlsPanel" style="background: #0a0c10; border-radius: 16px; padding: 1.2rem; margin-top: 1rem; border-left: 4px solid #2ea043;">
-                <p style="margin-bottom: 8px; font-weight: bold;">📡 روابط API (تعرض JSON فقط بدون HTML):</p>
-                <div id="urlDisplay" style="font-size: 0.85rem; word-break: break-all; background: #0d1117; padding: 12px; border-radius: 12px; font-family: monospace;">
-                    <span style="color: #8b949e;">ادخل كود واضغط حفظ لعرض الرابط</span>
-                </div>
-                <div style="margin-top: 12px; display: flex; gap: 12px; flex-wrap: wrap;">
-                    <button id="copyJsonUrlBtn" style="background: #21262d; border: none; padding: 6px 16px; border-radius: 30px; font-size: 0.8rem; cursor: pointer;">📋 نسخ رابط JSON</button>
-                    <button id="copyRawUrlBtn" style="background: #21262d; border: none; padding: 6px 16px; border-radius: 30px; font-size: 0.8rem; cursor: pointer;">📄 نسخ رابط النص الخام (Raw)</button>
-                </div>
-            </div>
-        </div>
-        
-        <div style="margin-top: 2rem; background: #161b22; border-radius: 20px; padding: 1.5rem; border: 1px solid #30363d;">
-            <h3 style="margin-top: 0; display: flex; gap: 8px;">⚙️ كيف يعمل التعديل لاحقاً؟</h3>
-            <ul style="color: #c9d1d9; line-height: 1.6; padding-left: 1.2rem;">
-                <li><strong>🔹 إنشاء / تعديل:</strong> أدخل نفس <strong>الكود</strong> الذي استخدمته سابقاً ثم غيّر المحتوى واضغط "حفظ" — سيتم تحديث البيانات.</li>
-                <li><strong>🔹 استرجاع JSON النقي:</strong> استخدم الرابط <code style="background:#21262d;padding:2px 6px;border-radius:6px;">?api=json&code=YOUR_CODE</code> — هذه الصفحة تعرض <strong>JSON فقط</strong> بدون أي علامات HTML، مناسبة لأي تطبيق خارجي.</li>
-                <li><strong>🔹 استرجاع نص خام:</strong> <code style="background:#21262d;padding:2px 6px;border-radius:6px;">?api=raw&code=YOUR_CODE</code> يعرض المحتوى كـ plain text.</li>
-                <li><strong>🔹 مثال لاستدعاء خارجي (Python, JS, PHP):</strong> <code>fetch("https://yourdomain.com/page.html?api=json&code=my-config")</code> → يحصل على JSON فوري.</li>
-            </ul>
-        </div>
-        
-        <div id="toastMsg" style="position: fixed; bottom: 20px; right: 20px; background: #238636; color: white; padding: 10px 20px; border-radius: 40px; font-size: 0.85rem; opacity: 0; transition: opacity 0.3s; pointer-events: none;"></div>
+
+<nav>
+  <a class="logo" href="#" onclick="showView('home'); return false;">ren<span>try</span></a>
+  <div class="nav-links">
+    <button class="nav-link" onclick="showView('list')">My Pastes</button>
+    <button class="nav-link" onclick="showView('home')">+ New</button>
+  </div>
+</nav>
+
+<!-- ─── HOME VIEW ─── -->
+<div id="view-home" class="view active">
+  <div class="editor-shell">
+    <div class="editor-header">
+      <h1 class="editor-title">New paste<span class="cursor-hint" id="cursor"></span></h1>
+      <p class="editor-sub">Write in <a href="javascript:void(0)" onclick="insertMDGuide()">Markdown</a>. Share instantly. No account needed.</p>
     </div>
 
-    <script>
-        // ================================================================
-        // JSON PURE API + EDITABLE CONTENT BY "CODE" (SLUG)
-        // يخزن البيانات في localStorage. صفحة JSON النقي بدون أي HTML.
-        // يمكن تعديل المحتوى في أي وقت باستخدام نفس الكود.
-        // ================================================================
-        
-        (function() {
-            // ---------- مساعد Base64 دعم يونيكود ----------
-            function encodeUnicode(str) {
-                try {
-                    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode('0x' + p1)));
-                } catch(e) {
-                    return btoa(str);
-                }
-            }
-            
-            function decodeUnicode(b64) {
-                try {
-                    const decoded = atob(b64);
-                    return decodeURIComponent(decoded.split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-                } catch(e) {
-                    try { return atob(b64); } catch(e2) { return ''; }
-                }
-            }
-            
-            // ---------- تخزين البيانات ----------
-            function saveContent(code, rawContent) {
-                if (!code || !code.trim()) return { success: false, error: "الكود مطلوب" };
-                if (!/^[a-zA-Z0-9_-]{2,60}$/.test(code)) {
-                    return { success: false, error: "الكود يجب أن يحتوي على 2-60 حرف (a-z, A-Z, 0-9, _, - فقط)" };
-                }
-                const encoded = encodeUnicode(rawContent);
-                const store = JSON.parse(localStorage.getItem('json_pure_api_data') || '{}');
-                store[code] = {
-                    content: encoded,
-                    updatedAt: new Date().toISOString(),
-                    version: (store[code]?.version || 0) + 1
-                };
-                localStorage.setItem('json_pure_api_data', JSON.stringify(store));
-                return { success: true, code, updatedAt: store[code].updatedAt };
-            }
-            
-            function loadContentByCode(code) {
-                const store = JSON.parse(localStorage.getItem('json_pure_api_data') || '{}');
-                const entry = store[code];
-                if (!entry) return null;
-                try {
-                    const decoded = decodeUnicode(entry.content);
-                    return { content: decoded, meta: { updatedAt: entry.updatedAt, version: entry.version } };
-                } catch(e) {
-                    return null;
-                }
-            }
-            
-            function getAllCodes() {
-                const store = JSON.parse(localStorage.getItem('json_pure_api_data') || '{}');
-                return Object.keys(store);
-            }
-            
-            // ---------- توليد الروابط ----------
-            function getBaseUrl() {
-                return window.location.origin + window.location.pathname;
-            }
-            
-            function getJsonApiUrl(code) {
-                return `${getBaseUrl()}?api=json&code=${encodeURIComponent(code)}`;
-            }
-            
-            function getRawApiUrl(code) {
-                return `${getBaseUrl()}?api=raw&code=${encodeURIComponent(code)}`;
-            }
-            
-            // ---------- معالج API النقي (JSON فقط / RAW فقط) بدون أي HTML ----------
-            function handlePureApiRequest() {
-                const urlParams = new URLSearchParams(window.location.search);
-                const apiType = urlParams.get('api');
-                const code = urlParams.get('code');
-                
-                // التحقق: اذا كان الطلب json أو raw ولدينا كود
-                if ((apiType === 'json' || apiType === 'raw') && code) {
-                    const stored = loadContentByCode(code);
-                    
-                    if (apiType === 'json') {
-                        // مسح كامل الصفحة وعرض JSON خالص
-                        document.head.innerHTML = '<meta charset="UTF-8">';
-                        document.body.innerHTML = '';
-                        document.body.style.margin = '0';
-                        document.body.style.padding = '0';
-                        document.body.style.backgroundColor = '#0d1117';
-                        
-                        let responseObj;
-                        if (stored) {
-                            responseObj = {
-                                status: "success",
-                                code: code,
-                                content: stored.content,
-                                last_updated: stored.meta.updatedAt,
-                                version: stored.meta.version,
-                                api_endpoint: "json_pure"
-                            };
-                        } else {
-                            responseObj = {
-                                status: "error",
-                                code: code,
-                                message: "هذا الكود غير موجود. قم بإنشائه وتعديله عبر الواجهة الرئيسية.",
-                                hint: "استخدم واجهة التحرير لحفظ محتوى بهذا الكود أولاً"
-                            };
-                        }
-                        // طباعة JSON جميل مع مسافة بادئة
-                        const jsonString = JSON.stringify(responseObj, null, 2);
-                        const pre = document.createElement('pre');
-                        pre.textContent = jsonString;
-                        pre.style.cssText = 'margin:0; padding:20px; background:#0d1117; color:#a5d6ff; font-family:monospace; font-size:14px; white-space:pre-wrap; word-break:break-word; min-height:100vh;';
-                        document.body.appendChild(pre);
-                        return true; // تم التعامل مع الطلب
-                    }
-                    
-                    else if (apiType === 'raw') {
-                        // عرض نص خالص بدون أي زخرفة HTML
-                        document.head.innerHTML = '<meta charset="UTF-8">';
-                        document.body.innerHTML = '';
-                        document.body.style.margin = '0';
-                        document.body.style.backgroundColor = '#0d1117';
-                        if (stored) {
-                            const rawTextNode = document.createTextNode(stored.content);
-                            const pre = document.createElement('pre');
-                            pre.style.cssText = 'margin:0; padding:20px; background:#0d1117; color:#e6edf3; font-family:monospace; font-size:14px; white-space:pre-wrap; word-break:break-word;';
-                            pre.textContent = stored.content;
-                            document.body.appendChild(pre);
-                        } else {
-                            const errorPre = document.createElement('pre');
-                            errorPre.textContent = `Error: Code "${code}" not found. Create it first.`;
-                            errorPre.style.cssText = 'margin:0; padding:20px; color:#f85149; background:#0d1117;';
-                            document.body.appendChild(errorPre);
-                        }
-                        return true;
-                    }
-                }
-                return false; // ليس طلب api خالص
-            }
-            
-            // ---------- واجهة المستخدم التحريرية (تظهر فقط إذا لم يكن طلب api) ----------
-            function renderEditorUI() {
-                const editorDiv = document.getElementById('editor-app');
-                if (!editorDiv) return;
-                
-                const codeInput = document.getElementById('codeInput');
-                const contentInput = document.getElementById('contentInput');
-                const saveBtn = document.getElementById('saveBtn');
-                const loadBtn = document.getElementById('loadBtn');
-                const viewJsonBtn = document.getElementById('viewJsonBtn');
-                const urlDisplaySpan = document.getElementById('urlDisplay');
-                const copyJsonBtn = document.getElementById('copyJsonUrlBtn');
-                const copyRawBtn = document.getElementById('copyRawUrlBtn');
-                
-                function updateUrlDisplay() {
-                    const code = codeInput.value.trim();
-                    if (code && /^[a-zA-Z0-9_-]{2,60}$/.test(code)) {
-                        const jsonUrl = getJsonApiUrl(code);
-                        const rawUrl = getRawApiUrl(code);
-                        urlDisplaySpan.innerHTML = `
-                            <div style="margin-bottom: 8px;">🔗 JSON API: <span style="color:#58a6ff; word-break:break-all;">${escapeHtml(jsonUrl)}</span></div>
-                            <div>📄 Raw Text API: <span style="color:#a5d6ff; word-break:break-all;">${escapeHtml(rawUrl)}</span></div>
-                        `;
-                        // تخزين الروابط مؤقتاً للنسخ
-                        urlDisplaySpan.setAttribute('data-json-url', jsonUrl);
-                        urlDisplaySpan.setAttribute('data-raw-url', rawUrl);
-                    } else {
-                        urlDisplaySpan.innerHTML = '<span style="color:#8b949e;">⚠️ أدخل كود صالح (حروف/أرقام/ _ -) لعرض الروابط</span>';
-                        urlDisplaySpan.removeAttribute('data-json-url');
-                        urlDisplaySpan.removeAttribute('data-raw-url');
-                    }
-                }
-                
-                function showToast(message, isError = false) {
-                    const toast = document.getElementById('toastMsg');
-                    if (!toast) return;
-                    toast.style.backgroundColor = isError ? '#da3633' : '#238636';
-                    toast.textContent = message;
-                    toast.style.opacity = '1';
-                    setTimeout(() => { toast.style.opacity = '0'; }, 2500);
-                }
-                
-                saveBtn.addEventListener('click', () => {
-                    const code = codeInput.value.trim();
-                    const rawContent = contentInput.value;
-                    if (!code) {
-                        showToast('⚠️ الرجاء إدخال الكود أولاً', true);
-                        return;
-                    }
-                    const result = saveContent(code, rawContent);
-                    if (result.success) {
-                        showToast(`✅ تم حفظ/تحديث الكود "${code}" بنجاح!`);
-                        updateUrlDisplay();
-                        // تحديث معلومات آخر تحديث
-                    } else {
-                        showToast(`❌ فشل الحفظ: ${result.error}`, true);
-                    }
-                });
-                
-                loadBtn.addEventListener('click', () => {
-                    const code = codeInput.value.trim();
-                    if (!code) {
-                        showToast('أدخل الكود أولاً', true);
-                        return;
-                    }
-                    const loaded = loadContentByCode(code);
-                    if (loaded) {
-                        contentInput.value = loaded.content;
-                        showToast(`📂 تم تحميل المحتوى من الكود "${code}" - آخر تحديث: ${new Date(loaded.meta.updatedAt).toLocaleString()}`);
-                        updateUrlDisplay();
-                    } else {
-                        showToast(`❌ لا يوجد محتوى مسجل بهذا الكود: "${code}"`, true);
-                    }
-                });
-                
-                viewJsonBtn.addEventListener('click', () => {
-                    const code = codeInput.value.trim();
-                    if (!code || !/^[a-zA-Z0-9_-]{2,60}$/.test(code)) {
-                        showToast('الكود غير صالح للفتح', true);
-                        return;
-                    }
-                    const jsonUrl = getJsonApiUrl(code);
-                    window.open(jsonUrl, '_blank');
-                });
-                
-                if (copyJsonBtn) {
-                    copyJsonBtn.addEventListener('click', () => {
-                        const jsonUrl = urlDisplaySpan.getAttribute('data-json-url');
-                        if (jsonUrl) {
-                            navigator.clipboard.writeText(jsonUrl).then(() => showToast('📋 تم نسخ رابط JSON')).catch(() => showToast('تعذر النسخ', true));
-                        } else {
-                            showToast('لا يوجد رابط صالح', true);
-                        }
-                    });
-                }
-                
-                if (copyRawBtn) {
-                    copyRawBtn.addEventListener('click', () => {
-                        const rawUrl = urlDisplaySpan.getAttribute('data-raw-url');
-                        if (rawUrl) {
-                            navigator.clipboard.writeText(rawUrl).then(() => showToast('📄 تم نسخ رابط النص الخام')).catch(() => showToast('تعذر النسخ', true));
-                        } else {
-                            showToast('لا يوجد رابط خام', true);
-                        }
-                    });
-                }
-                
-                codeInput.addEventListener('input', updateUrlDisplay);
-                updateUrlDisplay();
-                
-                // في حال وجود كود في رابط الصفحة (مثال ?code=xxx) نملأه تلقائياً
-                const urlCode = new URLSearchParams(window.location.search).get('code');
-                if (urlCode && codeInput) {
-                    codeInput.value = urlCode;
-                    loadBtn.click();
-                }
-            }
-            
-            function escapeHtml(str) {
-                if (!str) return '';
-                return str.replace(/[&<>]/g, function(m) {
-                    if (m === '&') return '&amp;';
-                    if (m === '<') return '&lt;';
-                    if (m === '>') return '&gt;';
-                    return m;
-                });
-            }
-            
-            // ========== نقطة الدخول الرئيسية ==========
-            // الخطوة 1: التحقق مما إذا كان الطلب موجه لنقطة JSON النقي (api=json or api=raw)
-            const isApiRequest = handlePureApiRequest();
-            
-            // الخطوة 2: إذا لم يكن طلب API خالص، نقوم بعرض واجهة التحرير كاملة
-            if (!isApiRequest) {
-                // نضمن وجود هيكل HTML للواجهة (إذا لم يتم تحميله نضيفه ديناميكياً)
-                if (!document.getElementById('editor-app')) {
-                    const container = document.createElement('div');
-                    container.id = 'editor-app';
-                    container.style.cssText = 'max-width: 1000px; margin: 2rem auto; padding: 1rem;';
-                    document.body.innerHTML = '';
-                    document.body.style.background = '#0d1117';
-                    document.body.appendChild(container);
-                }
-                // إعادة بناء المحتوى (بسيط)
-                const mainDiv = document.getElementById('editor-app');
-                if (mainDiv && mainDiv.innerHTML.trim() === '') {
-                    mainDiv.innerHTML = `
-                        <div style="background:#161b22; border-radius:24px; padding:2rem; border:1px solid #30363d;">
-                            <h1 style="color:white;">📦 JSON API - تعديل المحتوى برمز</h1>
-                            <p style="color:#8b949e;">قم بإنشاء محتوى قابل للتعديل لاحقاً، واستخدم endpoint <code>?api=json&code=your_code</code> للحصول على JSON خالص.</p>
-                            <div style="margin-bottom:1rem;">
-                                <label>الكود:</label>
-                                <input id="codeInput" style="width:100%; padding:10px; background:#0d1117; border:1px solid #30363d; border-radius:12px; color:white;">
-                            </div>
-                            <div><label>المحتوى:</label><textarea id="contentInput" rows="7" style="width:100%; background:#0d1117; border:1px solid #30363d; border-radius:12px; color:white;"></textarea></div>
-                            <div style="display:flex; gap:12px; margin:1rem 0;"><button id="saveBtn" style="background:#238636; padding:8px 24px; border-radius:40px;">💾 حفظ</button><button id="loadBtn" style="background:#1f6feb; padding:8px 24px; border-radius:40px;">📂 تحميل</button><button id="viewJsonBtn" style="background:#30363d; padding:8px 24px; border-radius:40px;">🔗 JSON API</button></div>
-                            <div id="urlDisplay" style="background:#0a0c10; padding:12px; border-radius:16px; font-family:monospace; font-size:0.8rem;"></div>
-                        </div>
-                    `;
-                }
-                renderEditorUI();
-            }
-        })();
-    </script>
+    <!-- URL slug -->
+    <div class="url-row">
+      <span class="url-prefix" id="base-url-prefix">rentry.co/</span>
+      <input class="url-input" id="slug-input" type="text" maxlength="40" placeholder="custom-url (optional)" autocomplete="off" spellcheck="false">
+    </div>
+
+    <!-- Edit key -->
+    <div class="key-row">
+      <span class="key-label">Edit key</span>
+      <input class="key-input" id="key-input" type="text" maxlength="60" placeholder="Set a password to edit later (optional)" autocomplete="off">
+    </div>
+
+    <!-- Toolbar -->
+    <div class="editor-toolbar">
+      <button class="tb-btn" onclick="wrap('**','**')" title="Bold"><b>B</b></button>
+      <button class="tb-btn" onclick="wrap('*','*')" title="Italic"><i>I</i></button>
+      <button class="tb-btn" onclick="wrap('~~','~~')" title="Strikethrough"><s>S</s></button>
+      <button class="tb-btn" onclick="wrap('`','`')" title="Inline code">code</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="insertLine('# ')" title="H1">H1</button>
+      <button class="tb-btn" onclick="insertLine('## ')" title="H2">H2</button>
+      <button class="tb-btn" onclick="insertLine('### ')" title="H3">H3</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="insertLine('- ')" title="List">— list</button>
+      <button class="tb-btn" onclick="insertLine('> ')" title="Quote">❝ quote</button>
+      <button class="tb-btn" onclick="wrap('\`\`\`\n','\n\`\`\`')" title="Code block">{  }</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" id="preview-toggle-btn" onclick="togglePreview()">⟨ preview</button>
+    </div>
+
+    <div class="content-area">
+      <textarea id="editor" placeholder="Start writing… Markdown is supported." oninput="onEditorInput()" spellcheck="true"></textarea>
+      <div id="preview-pane"></div>
+    </div>
+
+    <div class="editor-meta">
+      <span class="char-count" id="char-count">0 chars</span>
+    </div>
+
+    <div class="submit-row">
+      <button class="btn-primary" id="publish-btn" onclick="publishPaste()">Publish</button>
+      <button class="btn-ghost" onclick="clearEditor()">Clear</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── PASTE VIEW ─── -->
+<div id="view-paste" class="view">
+  <div class="paste-shell">
+    <div class="paste-topbar">
+      <div class="paste-url-badge">
+        rentry.co/<strong id="paste-slug-display"></strong>
+        <button class="btn-sm" style="border:none;padding:2px 6px;font-size:11px;" onclick="copyPasteUrl()" title="Copy link">⎘</button>
+      </div>
+      <div class="paste-actions">
+        <button class="btn-sm" id="raw-toggle-btn" onclick="toggleRaw()">Raw</button>
+        <button class="btn-sm" onclick="editPaste()">Edit</button>
+        <button class="btn-sm danger" onclick="openDeleteModal()">Delete</button>
+        <button class="btn-sm" onclick="showView('home')">+ New</button>
+      </div>
+    </div>
+
+    <div class="paste-content" id="paste-rendered"></div>
+    <pre id="raw-content"></pre>
+  </div>
+</div>
+
+<!-- ─── LIST VIEW ─── -->
+<div id="view-list" class="view">
+  <div class="list-shell">
+    <div class="list-title">My pastes</div>
+    <div id="pastes-list"></div>
+  </div>
+</div>
+
+<!-- ─── EDIT VIEW ─── -->
+<div id="view-edit" class="view">
+  <div class="editor-shell">
+    <div class="editor-header">
+      <h1 class="editor-title">Edit paste</h1>
+      <p class="editor-sub" id="edit-url-hint"></p>
+    </div>
+    <div class="editor-toolbar">
+      <button class="tb-btn" onclick="wrapEdit('**','**')"><b>B</b></button>
+      <button class="tb-btn" onclick="wrapEdit('*','*')"><i>I</i></button>
+      <button class="tb-btn" onclick="wrapEdit('~~','~~')"><s>S</s></button>
+      <button class="tb-btn" onclick="wrapEdit('`','`')">code</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" id="edit-preview-btn" onclick="toggleEditPreview()">⟨ preview</button>
+    </div>
+    <textarea id="edit-editor" style="width:100%;min-height:340px;border:1.5px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:16px;font-family:var(--mono);font-size:14px;line-height:1.7;color:var(--ink);resize:vertical;outline:none;background:#fff;" oninput="onEditInput()"></textarea>
+    <div id="edit-preview-pane" style="display:none;min-height:340px;border:1.5px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:20px 24px;background:#fff;font-size:15px;line-height:1.75;"></div>
+    <div class="submit-row">
+      <button class="btn-primary" onclick="saveEdit()">Save changes</button>
+      <button class="btn-ghost" onclick="cancelEdit()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODALS ─── -->
+<!-- Delete modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal">
+    <h3>Delete paste?</h3>
+    <p>Enter your edit key to confirm deletion. This cannot be undone.</p>
+    <input class="modal-input" id="delete-key-input" type="password" placeholder="Edit key">
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('delete-modal')">Cancel</button>
+      <button class="btn-primary" style="background:var(--danger)" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit key modal -->
+<div class="modal-overlay" id="edit-key-modal">
+  <div class="modal">
+    <h3>Enter edit key</h3>
+    <p>This paste is protected. Enter the edit key to continue.</p>
+    <input class="modal-input" id="edit-key-modal-input" type="password" placeholder="Edit key">
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('edit-key-modal')">Cancel</button>
+      <button class="btn-primary" onclick="confirmEditKey()">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<footer>
+  <a href="javascript:void(0)">About</a>
+  <a href="javascript:void(0)">Markdown guide</a>
+  <a href="javascript:void(0)">API</a>
+  <span>Made with ♥ — open source</span>
+</footer>
+
+<script>
+/* ── Storage ── */
+const DB_KEY = 'rentry_pastes';
+
+function getDB() {
+  try { return JSON.parse(localStorage.getItem(DB_KEY) || '{}'); }
+  catch { return {}; }
+}
+function saveDB(db) {
+  localStorage.setItem(DB_KEY, JSON.stringify(db));
+}
+
+/* ── Markdown renderer (no deps) ── */
+function renderMD(text) {
+  if (!text) return '';
+  let html = text
+    // escape
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    // fenced code blocks
+    .replace(/```([^`]*?)```/gs, (_,c)=>`<pre><code>${c.trim()}</code></pre>`)
+    // headings
+    .replace(/^#{6} (.+)$/gm,'<h6>$1</h6>')
+    .replace(/^#{5} (.+)$/gm,'<h5>$1</h5>')
+    .replace(/^#{4} (.+)$/gm,'<h4>$1</h4>')
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+    // hr
+    .replace(/^---+$/gm,'<hr>')
+    // blockquote
+    .replace(/^&gt; (.+)$/gm,'<blockquote>$1</blockquote>')
+    // bold/italic
+    .replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/~~(.+?)~~/g,'<del>$1</del>')
+    // inline code
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    // links & images
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g,'<img src="$2" alt="$1">')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
+    // unordered list
+    .replace(/(^- .+$(\n^- .+$)*)/gm, m=>'<ul>'+m.split('\n').map(l=>`<li>${l.slice(2)}</li>`).join('')+'</ul>')
+    // ordered list
+    .replace(/(^\d+\. .+$(\n^\d+\. .+$)*)/gm, m=>'<ol>'+m.split('\n').map(l=>`<li>${l.replace(/^\d+\. /,'')}</li>`).join('')+'</ol>')
+    // paragraphs
+    .split(/\n\n+/)
+    .map(block => {
+      if (/^<(h[1-6]|ul|ol|pre|hr|blockquote)/.test(block)) return block;
+      return `<p>${block.replace(/\n/g,'<br>')}</p>`;
+    })
+    .join('\n');
+  return html;
+}
+
+/* ── Views ── */
+let currentSlug = null;
+let editingSlug = null;
+let showingRaw = false;
+let showingPreview = false;
+let editShowingPreview = false;
+
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  if (name === 'list') renderList();
+  if (name === 'home') {
+    // stop cursor blink after 3s
+    setTimeout(()=>{ const c=document.getElementById('cursor'); if(c) c.style.display='none'; }, 3000);
+  }
+}
+
+/* ── Editor helpers ── */
+function onEditorInput() {
+  const v = document.getElementById('editor').value;
+  document.getElementById('char-count').textContent = v.length.toLocaleString() + ' chars';
+  if (showingPreview) document.getElementById('preview-pane').innerHTML = renderMD(v);
+}
+
+function togglePreview() {
+  showingPreview = !showingPreview;
+  const ta = document.getElementById('editor');
+  const pane = document.getElementById('preview-pane');
+  const btn = document.getElementById('preview-toggle-btn');
+  if (showingPreview) {
+    pane.innerHTML = renderMD(ta.value);
+    pane.style.display = 'block';
+    ta.style.display = 'none';
+    btn.classList.add('active');
+    btn.textContent = '✎ edit';
+  } else {
+    pane.style.display = 'none';
+    ta.style.display = 'block';
+    btn.classList.remove('active');
+    btn.textContent = '⟨ preview';
+  }
+}
+
+function toggleEditPreview() {
+  editShowingPreview = !editShowingPreview;
+  const ta = document.getElementById('edit-editor');
+  const pane = document.getElementById('edit-preview-pane');
+  const btn = document.getElementById('edit-preview-btn');
+  if (editShowingPreview) {
+    pane.innerHTML = renderMD(ta.value);
+    pane.style.display = 'block';
+    ta.style.display = 'none';
+    btn.classList.add('active');
+    btn.textContent = '✎ edit';
+  } else {
+    pane.style.display = 'none';
+    ta.style.display = 'block';
+    btn.classList.remove('active');
+    btn.textContent = '⟨ preview';
+  }
+}
+
+function onEditInput() {
+  if (editShowingPreview) {
+    document.getElementById('edit-preview-pane').innerHTML = renderMD(document.getElementById('edit-editor').value);
+  }
+}
+
+function wrap(before, after) {
+  const ta = document.getElementById('editor');
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  const sel = ta.value.slice(s, e) || 'text';
+  ta.value = ta.value.slice(0, s) + before + sel + after + ta.value.slice(e);
+  ta.focus();
+  ta.selectionStart = s + before.length;
+  ta.selectionEnd = s + before.length + sel.length;
+  onEditorInput();
+}
+function wrapEdit(before, after) {
+  const ta = document.getElementById('edit-editor');
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  const sel = ta.value.slice(s, e) || 'text';
+  ta.value = ta.value.slice(0, s) + before + sel + after + ta.value.slice(e);
+  ta.focus();
+  ta.selectionStart = s + before.length;
+  ta.selectionEnd = s + before.length + sel.length;
+}
+
+function insertLine(prefix) {
+  const ta = document.getElementById('editor');
+  const s = ta.selectionStart;
+  const lineStart = ta.value.lastIndexOf('\n', s-1)+1;
+  ta.value = ta.value.slice(0,lineStart) + prefix + ta.value.slice(lineStart);
+  ta.focus();
+  onEditorInput();
+}
+
+function clearEditor() {
+  document.getElementById('editor').value = '';
+  document.getElementById('slug-input').value = '';
+  document.getElementById('key-input').value = '';
+  document.getElementById('char-count').textContent = '0 chars';
+  if (showingPreview) togglePreview();
+}
+
+function insertMDGuide() {
+  document.getElementById('editor').value = `# Markdown Guide
+
+**Bold** and *italic* text
+
+## Lists
+- Item one
+- Item two
+- Item three
+
+## Code
+Inline \`code\` or a block:
+
+\`\`\`
+function hello() {
+  console.log("Hello, world!");
+}
+\`\`\`
+
+## Quotes
+> "The best way to predict the future is to invent it."
+
+## Links
+[Rentry](https://rentry.co)
+
+---
+*Happy writing!*
+`;
+  onEditorInput();
+}
+
+/* ── Publish ── */
+function generateSlug() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  return Array.from({length:8}, ()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+
+function publishPaste() {
+  const content = document.getElementById('editor').value.trim();
+  if (!content) { showToast('Write something first!', 'error'); return; }
+
+  let slug = document.getElementById('slug-input').value.trim()
+    .toLowerCase().replace(/[^a-z0-9-_]/g,'').slice(0,40);
+  if (!slug) slug = generateSlug();
+
+  const key = document.getElementById('key-input').value.trim();
+  const db = getDB();
+
+  if (db[slug]) {
+    showToast('URL taken — try another', 'error');
+    document.getElementById('slug-input').focus();
+    return;
+  }
+
+  db[slug] = { content, key, createdAt: Date.now() };
+  saveDB(db);
+
+  showToast('Published!', 'success');
+  clearEditor();
+  openPaste(slug);
+}
+
+/* ── Paste view ── */
+function openPaste(slug) {
+  const db = getDB();
+  const paste = db[slug];
+  if (!paste) { showToast('Paste not found', 'error'); showView('home'); return; }
+
+  currentSlug = slug;
+  showingRaw = false;
+
+  document.getElementById('paste-slug-display').textContent = slug;
+  document.getElementById('paste-rendered').innerHTML = renderMD(paste.content);
+  document.getElementById('paste-rendered').style.display = 'block';
+  document.getElementById('raw-content').textContent = paste.content;
+  document.getElementById('raw-content').style.display = 'none';
+  document.getElementById('raw-toggle-btn').textContent = 'Raw';
+
+  showView('paste');
+}
+
+function toggleRaw() {
+  showingRaw = !showingRaw;
+  document.getElementById('paste-rendered').style.display = showingRaw ? 'none' : 'block';
+  document.getElementById('raw-content').style.display = showingRaw ? 'block' : 'none';
+  document.getElementById('raw-toggle-btn').textContent = showingRaw ? 'Rendered' : 'Raw';
+}
+
+function copyPasteUrl() {
+  const url = `${location.href.split('?')[0]}?p=${currentSlug}`;
+  navigator.clipboard.writeText(url).then(()=>showToast('Link copied!')).catch(()=>{
+    prompt('Copy this link:', url);
+  });
+}
+
+/* ── Edit ── */
+function editPaste() {
+  const db = getDB();
+  const paste = db[currentSlug];
+  if (paste.key) {
+    openModal('edit-key-modal');
+  } else {
+    startEdit(currentSlug);
+  }
+}
+
+function confirmEditKey() {
+  const input = document.getElementById('edit-key-modal-input').value.trim();
+  const db = getDB();
+  const paste = db[currentSlug];
+  if (paste.key && paste.key !== input) {
+    showToast('Wrong edit key', 'error');
+    return;
+  }
+  closeModal('edit-key-modal');
+  document.getElementById('edit-key-modal-input').value = '';
+  startEdit(currentSlug);
+}
+
+function startEdit(slug) {
+  const db = getDB();
+  editingSlug = slug;
+  document.getElementById('edit-editor').value = db[slug].content;
+  document.getElementById('edit-url-hint').textContent = `Editing rentry.co/${slug}`;
+  if (editShowingPreview) toggleEditPreview();
+  showView('edit');
+}
+
+function saveEdit() {
+  const content = document.getElementById('edit-editor').value.trim();
+  if (!content) { showToast('Content cannot be empty', 'error'); return; }
+  const db = getDB();
+  db[editingSlug].content = content;
+  db[editingSlug].updatedAt = Date.now();
+  saveDB(db);
+  showToast('Saved!', 'success');
+  openPaste(editingSlug);
+}
+
+function cancelEdit() {
+  openPaste(currentSlug || editingSlug);
+}
+
+/* ── Delete ── */
+function openDeleteModal() { openModal('delete-modal'); }
+
+function confirmDelete() {
+  const input = document.getElementById('delete-key-input').value.trim();
+  const db = getDB();
+  const paste = db[currentSlug];
+  if (paste.key && paste.key !== input) {
+    showToast('Wrong edit key', 'error');
+    return;
+  }
+  delete db[currentSlug];
+  saveDB(db);
+  closeModal('delete-modal');
+  document.getElementById('delete-key-input').value = '';
+  showToast('Paste deleted');
+  currentSlug = null;
+  showView('home');
+}
+
+/* ── List ── */
+function renderList() {
+  const db = getDB();
+  const slugs = Object.keys(db).sort((a,b)=>(db[b].createdAt||0)-(db[a].createdAt||0));
+  const el = document.getElementById('pastes-list');
+  if (!slugs.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div style="font-size:32px">📋</div>
+      <p>No pastes yet. <a href="javascript:void(0)" onclick="showView('home')" style="color:var(--accent)">Create one!</a></p>
+    </div>`;
+    return;
+  }
+  el.innerHTML = slugs.map(slug => {
+    const p = db[slug];
+    const preview = p.content.replace(/[#*`>\n]/g,' ').slice(0,80);
+    const d = new Date(p.createdAt);
+    const when = d.toLocaleDateString();
+    return `<div class="paste-row" onclick="openPaste('${slug}')">
+      <span class="paste-row-url">${slug}</span>
+      <span class="paste-row-preview">${preview}</span>
+      <span class="paste-row-time">${when}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ── Modal helpers ── */
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+/* ── Toast ── */
+let toastTimer;
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' '+type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.className='toast'; }, 2600);
+}
+
+/* ── URL routing (share links) ── */
+const params = new URLSearchParams(location.search);
+const slugParam = params.get('p');
+if (slugParam) {
+  const db = getDB();
+  if (db[slugParam]) { openPaste(slugParam); }
+  else {
+    showToast('Paste not found or expired', 'error');
+  }
+}
+
+/* ── Stop cursor after 3s ── */
+setTimeout(()=>{ const c=document.getElementById('cursor'); if(c) c.style.display='none'; }, 3000);
+
+/* ── Set base URL ── */
+document.getElementById('base-url-prefix').textContent = location.hostname + '/';
+</script>
 </body>
 </html>
