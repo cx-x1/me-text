@@ -1,43 +1,1073 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام تبادل البيانات - JSON API</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rentry — Markdown Pastebin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #1A1A2E;
+    --ink-soft: #4A4A6A;
+    --accent: #2563EB;
+    --accent-hover: #1D4ED8;
+    --surface: #FAFAFA;
+    --border: #E2E8F0;
+    --border-focus: #93C5FD;
+    --code-bg: #F1F5F9;
+    --danger: #DC2626;
+    --success: #16A34A;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--surface);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* NAV */
+  nav {
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--ink);
+    text-decoration: none;
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--accent); }
+
+  .nav-links {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .nav-link {
+    font-size: 13px;
+    color: var(--ink-soft);
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-family: var(--sans);
+  }
+  .nav-link:hover { background: var(--code-bg); color: var(--ink); }
+
+  /* VIEWS */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ─── HOME / EDITOR ─── */
+  .editor-shell {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    width: 100%;
+  }
+
+  .editor-header {
+    margin-bottom: 24px;
+  }
+
+  .editor-title {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.8px;
+    margin-bottom: 6px;
+    color: var(--ink);
+  }
+  .editor-sub {
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+  .editor-sub a { color: var(--accent); text-decoration: none; }
+  .editor-sub a:hover { text-decoration: underline; }
+
+  /* URL row */
+  .url-row {
+    display: flex;
+    gap: 0;
+    margin-bottom: 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+    transition: border-color 0.2s;
+  }
+  .url-row:focus-within { border-color: var(--border-focus); }
+
+  .url-prefix {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--code-bg);
+    color: var(--ink-soft);
+    padding: 10px 12px;
+    border-right: 1.5px solid var(--border);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+  }
+
+  .url-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 10px 12px;
+    color: var(--ink);
+    background: transparent;
+  }
+  .url-input::placeholder { color: #B0B7C3; }
+
+  /* Edit key */
+  .key-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .key-label {
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .key-input {
+    flex: 1;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink);
+    outline: none;
+    background: #fff;
+    transition: border-color 0.2s;
+  }
+  .key-input:focus { border-color: var(--border-focus); }
+
+  /* Textarea toolbar */
+  .editor-toolbar {
+    display: flex;
+    gap: 4px;
+    padding: 6px 8px;
+    border: 1.5px solid var(--border);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    background: var(--code-bg);
+    flex-wrap: wrap;
+  }
+
+  .tb-btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 4px 9px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: none;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    font-weight: 500;
+  }
+  .tb-btn:hover { background: #fff; border-color: var(--border); color: var(--ink); }
+  .tb-btn.active { background: #fff; border-color: var(--accent); color: var(--accent); }
+
+  .tb-sep { width: 1px; background: var(--border); margin: 3px 2px; }
+
+  .content-area {
+    position: relative;
+  }
+
+  #editor {
+    width: 100%;
+    min-height: 340px;
+    border: 1.5px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--ink);
+    resize: vertical;
+    outline: none;
+    background: #fff;
+    transition: border-color 0.2s;
+    display: block;
+  }
+  #editor:focus { border-color: var(--border-focus); }
+
+  /* Preview pane */
+  #preview-pane {
+    display: none;
+    min-height: 340px;
+    border: 1.5px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 20px 24px;
+    background: #fff;
+    font-size: 15px;
+    line-height: 1.75;
+  }
+
+  /* Markdown preview styles */
+  #preview-pane h1, #preview-pane h2, #preview-pane h3 {
+    font-weight: 600; margin: 1.2em 0 0.4em; letter-spacing: -0.4px;
+  }
+  #preview-pane h1 { font-size: 1.75em; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  #preview-pane h2 { font-size: 1.35em; }
+  #preview-pane h3 { font-size: 1.1em; }
+  #preview-pane p { margin: 0.7em 0; }
+  #preview-pane a { color: var(--accent); }
+  #preview-pane code {
+    font-family: var(--mono); font-size: 0.88em;
+    background: var(--code-bg); padding: 2px 6px; border-radius: 4px;
+  }
+  #preview-pane pre {
+    background: var(--code-bg); border-radius: 8px; padding: 14px 16px;
+    overflow-x: auto; margin: 1em 0;
+  }
+  #preview-pane pre code { background: none; padding: 0; }
+  #preview-pane blockquote {
+    border-left: 3px solid var(--accent); margin: 1em 0;
+    padding: 4px 0 4px 16px; color: var(--ink-soft);
+  }
+  #preview-pane ul, #preview-pane ol { padding-left: 1.5em; margin: 0.6em 0; }
+  #preview-pane li { margin: 0.25em 0; }
+  #preview-pane hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+  #preview-pane table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 14px; }
+  #preview-pane th, #preview-pane td { border: 1px solid var(--border); padding: 7px 12px; text-align: left; }
+  #preview-pane th { background: var(--code-bg); font-weight: 600; }
+  #preview-pane img { max-width: 100%; border-radius: 6px; }
+
+  /* char counter */
+  .editor-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+  }
+  .char-count { font-size: 12px; color: #B0B7C3; font-family: var(--mono); }
+
+  /* Submit */
+  .submit-row {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: var(--sans);
+    transition: background 0.15s, transform 0.1s;
+  }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { background: #93C5FD; cursor: not-allowed; }
+
+  .btn-ghost {
+    background: none;
+    color: var(--ink-soft);
+    border: 1.5px solid var(--border);
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: var(--sans);
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ─── PASTE VIEW ─── */
+  .paste-shell {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+    width: 100%;
+  }
+
+  .paste-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .paste-url-badge {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .paste-url-badge strong { color: var(--ink); }
+
+  .paste-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .btn-sm {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: #fff;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-family: var(--sans);
+    font-weight: 500;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-sm.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+  .paste-content {
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 28px 32px;
+    background: #fff;
+    min-height: 200px;
+    font-size: 15px;
+    line-height: 1.75;
+  }
+
+  /* Raw view */
+  #raw-content {
+    display: none;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    background: var(--code-bg);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-all;
+    min-height: 200px;
+  }
+
+  /* ─── MODAL ─── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: #fff;
+    border-radius: 12px;
+    padding: 28px;
+    width: 100%;
+    max-width: 400px;
+    margin: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  }
+  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .modal p { font-size: 13px; color: var(--ink-soft); margin-bottom: 16px; line-height: 1.5; }
+
+  .modal-input {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: var(--mono);
+    font-size: 13px;
+    outline: none;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+  .modal-input:focus { border-color: var(--border-focus); }
+
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+  /* ─── TOAST ─── */
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 13px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    z-index: 300;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    font-weight: 500;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--danger); }
+
+  /* ─── FOOTER ─── */
+  footer {
+    margin-top: auto;
+    border-top: 1px solid var(--border);
+    padding: 18px 24px;
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    font-size: 12px;
+    color: #B0B7C3;
+    background: #fff;
+    flex-wrap: wrap;
+  }
+  footer a { color: #B0B7C3; text-decoration: none; }
+  footer a:hover { color: var(--ink-soft); }
+
+  /* ─── ALL PASTES LIST ─── */
+  .list-shell {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    width: 100%;
+  }
+  .list-title { font-size: 20px; font-weight: 600; margin-bottom: 20px; letter-spacing: -0.4px; }
+
+  .paste-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    text-decoration: none;
+    color: inherit;
+  }
+  .paste-row:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(37,99,235,0.08); }
+
+  .paste-row-url {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 500;
+    min-width: 120px;
+  }
+  .paste-row-preview {
+    flex: 1;
+    font-size: 13px;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .paste-row-time {
+    font-size: 11px;
+    color: #B0B7C3;
+    font-family: var(--mono);
+    white-space: nowrap;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--ink-soft);
+  }
+  .empty-state p { font-size: 14px; margin-top: 8px; }
+
+  /* Cursor blink on load */
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+  .cursor-hint { display: inline-block; width: 2px; height: 1em; background: var(--accent); animation: blink 1s step-end infinite; vertical-align: text-bottom; margin-left: 1px; }
+
+  @media (max-width: 600px) {
+    .editor-title { font-size: 22px; }
+    .paste-content { padding: 18px; }
+    .submit-row { flex-direction: column; align-items: flex-start; }
+  }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>📦 نظام تبادل البيانات الخاصة</h1>
-        <p>أدخل بياناتك ثم احصل على رابط JSON لمشاركتها مع مشاريعك الخارجية</p>
 
-        <div class="form-group">
-            <input type="text" id="keyInput" placeholder="المفتاح (مثال: name)">
-            <input type="text" id="valueInput" placeholder="القيمة (مثال: أحمد)">
-            <button id="addBtn">➕ إضافة زوج بيانات</button>
-        </div>
+<nav>
+  <a class="logo" href="#" onclick="showView('home'); return false;">ren<span>try</span></a>
+  <div class="nav-links">
+    <button class="nav-link" onclick="showView('list')">My Pastes</button>
+    <button class="nav-link" onclick="showView('home')">+ New</button>
+  </div>
+</nav>
 
-        <h3>📋 البيانات الحالية (ستصدر في JSON)</h3>
-        <table id="dataTable">
-            <thead>
-                <tr><th>المفتاح</th><th>القيمة</th><th></th></tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-
-        <div class="actions">
-            <button id="exportJsonBtn">🔗 إنشاء رابط JSON</button>
-            <button id="clearAllBtn">🗑️ مسح الكل</button>
-        </div>
-
-        <div id="jsonLinkBox" style="display:none;">
-            <h3>رابط بيانات JSON (انسخه واستخدمه في مشاريعك الخارجية)</h3>
-            <input type="text" id="jsonLink" readonly>
-            <button id="copyLinkBtn">📋 نسخ الرابط</button>
-            <p class="note">⚠️ ملاحظة: الرابط يعمل فقط على متصفحك لأنه يُخزن البيانات محليًا. إذا أردت API حقيقيًا، استخدم خدمة مثل MockAPI أو Supabase.</p>
-        </div>
+<!-- ─── HOME VIEW ─── -->
+<div id="view-home" class="view active">
+  <div class="editor-shell">
+    <div class="editor-header">
+      <h1 class="editor-title">New paste<span class="cursor-hint" id="cursor"></span></h1>
+      <p class="editor-sub">Write in <a href="javascript:void(0)" onclick="insertMDGuide()">Markdown</a>. Share instantly. No account needed.</p>
     </div>
 
-    <script src="script.js"></script>
+    <!-- URL slug -->
+    <div class="url-row">
+      <span class="url-prefix" id="base-url-prefix">rentry.co/</span>
+      <input class="url-input" id="slug-input" type="text" maxlength="40" placeholder="custom-url (optional)" autocomplete="off" spellcheck="false">
+    </div>
+
+    <!-- Edit key -->
+    <div class="key-row">
+      <span class="key-label">Edit key</span>
+      <input class="key-input" id="key-input" type="text" maxlength="60" placeholder="Set a password to edit later (optional)" autocomplete="off">
+    </div>
+
+    <!-- Toolbar -->
+    <div class="editor-toolbar">
+      <button class="tb-btn" onclick="wrap('**','**')" title="Bold"><b>B</b></button>
+      <button class="tb-btn" onclick="wrap('*','*')" title="Italic"><i>I</i></button>
+      <button class="tb-btn" onclick="wrap('~~','~~')" title="Strikethrough"><s>S</s></button>
+      <button class="tb-btn" onclick="wrap('`','`')" title="Inline code">code</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="insertLine('# ')" title="H1">H1</button>
+      <button class="tb-btn" onclick="insertLine('## ')" title="H2">H2</button>
+      <button class="tb-btn" onclick="insertLine('### ')" title="H3">H3</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="insertLine('- ')" title="List">— list</button>
+      <button class="tb-btn" onclick="insertLine('> ')" title="Quote">❝ quote</button>
+      <button class="tb-btn" onclick="wrap('\`\`\`\n','\n\`\`\`')" title="Code block">{  }</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" id="preview-toggle-btn" onclick="togglePreview()">⟨ preview</button>
+    </div>
+
+    <div class="content-area">
+      <textarea id="editor" placeholder="Start writing… Markdown is supported." oninput="onEditorInput()" spellcheck="true"></textarea>
+      <div id="preview-pane"></div>
+    </div>
+
+    <div class="editor-meta">
+      <span class="char-count" id="char-count">0 chars</span>
+    </div>
+
+    <div class="submit-row">
+      <button class="btn-primary" id="publish-btn" onclick="publishPaste()">Publish</button>
+      <button class="btn-ghost" onclick="clearEditor()">Clear</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── PASTE VIEW ─── -->
+<div id="view-paste" class="view">
+  <div class="paste-shell">
+    <div class="paste-topbar">
+      <div class="paste-url-badge">
+        rentry.co/<strong id="paste-slug-display"></strong>
+        <button class="btn-sm" style="border:none;padding:2px 6px;font-size:11px;" onclick="copyPasteUrl()" title="Copy link">⎘</button>
+      </div>
+      <div class="paste-actions">
+        <button class="btn-sm" id="raw-toggle-btn" onclick="toggleRaw()">Raw</button>
+        <button class="btn-sm" onclick="editPaste()">Edit</button>
+        <button class="btn-sm danger" onclick="openDeleteModal()">Delete</button>
+        <button class="btn-sm" onclick="showView('home')">+ New</button>
+      </div>
+    </div>
+
+    <div class="paste-content" id="paste-rendered"></div>
+    <pre id="raw-content"></pre>
+  </div>
+</div>
+
+<!-- ─── LIST VIEW ─── -->
+<div id="view-list" class="view">
+  <div class="list-shell">
+    <div class="list-title">My pastes</div>
+    <div id="pastes-list"></div>
+  </div>
+</div>
+
+<!-- ─── EDIT VIEW ─── -->
+<div id="view-edit" class="view">
+  <div class="editor-shell">
+    <div class="editor-header">
+      <h1 class="editor-title">Edit paste</h1>
+      <p class="editor-sub" id="edit-url-hint"></p>
+    </div>
+    <div class="editor-toolbar">
+      <button class="tb-btn" onclick="wrapEdit('**','**')"><b>B</b></button>
+      <button class="tb-btn" onclick="wrapEdit('*','*')"><i>I</i></button>
+      <button class="tb-btn" onclick="wrapEdit('~~','~~')"><s>S</s></button>
+      <button class="tb-btn" onclick="wrapEdit('`','`')">code</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" id="edit-preview-btn" onclick="toggleEditPreview()">⟨ preview</button>
+    </div>
+    <textarea id="edit-editor" style="width:100%;min-height:340px;border:1.5px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:16px;font-family:var(--mono);font-size:14px;line-height:1.7;color:var(--ink);resize:vertical;outline:none;background:#fff;" oninput="onEditInput()"></textarea>
+    <div id="edit-preview-pane" style="display:none;min-height:340px;border:1.5px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:20px 24px;background:#fff;font-size:15px;line-height:1.75;"></div>
+    <div class="submit-row">
+      <button class="btn-primary" onclick="saveEdit()">Save changes</button>
+      <button class="btn-ghost" onclick="cancelEdit()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODALS ─── -->
+<!-- Delete modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal">
+    <h3>Delete paste?</h3>
+    <p>Enter your edit key to confirm deletion. This cannot be undone.</p>
+    <input class="modal-input" id="delete-key-input" type="password" placeholder="Edit key">
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('delete-modal')">Cancel</button>
+      <button class="btn-primary" style="background:var(--danger)" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit key modal -->
+<div class="modal-overlay" id="edit-key-modal">
+  <div class="modal">
+    <h3>Enter edit key</h3>
+    <p>This paste is protected. Enter the edit key to continue.</p>
+    <input class="modal-input" id="edit-key-modal-input" type="password" placeholder="Edit key">
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('edit-key-modal')">Cancel</button>
+      <button class="btn-primary" onclick="confirmEditKey()">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<footer>
+  <a href="javascript:void(0)">About</a>
+  <a href="javascript:void(0)">Markdown guide</a>
+  <a href="javascript:void(0)">API</a>
+  <span>Made with ♥ — open source</span>
+</footer>
+
+<script>
+/* ── Storage ── */
+const DB_KEY = 'rentry_pastes';
+
+function getDB() {
+  try { return JSON.parse(localStorage.getItem(DB_KEY) || '{}'); }
+  catch { return {}; }
+}
+function saveDB(db) {
+  localStorage.setItem(DB_KEY, JSON.stringify(db));
+}
+
+/* ── Markdown renderer (no deps) ── */
+function renderMD(text) {
+  if (!text) return '';
+  let html = text
+    // escape
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    // fenced code blocks
+    .replace(/```([^`]*?)```/gs, (_,c)=>`<pre><code>${c.trim()}</code></pre>`)
+    // headings
+    .replace(/^#{6} (.+)$/gm,'<h6>$1</h6>')
+    .replace(/^#{5} (.+)$/gm,'<h5>$1</h5>')
+    .replace(/^#{4} (.+)$/gm,'<h4>$1</h4>')
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+    // hr
+    .replace(/^---+$/gm,'<hr>')
+    // blockquote
+    .replace(/^&gt; (.+)$/gm,'<blockquote>$1</blockquote>')
+    // bold/italic
+    .replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/~~(.+?)~~/g,'<del>$1</del>')
+    // inline code
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    // links & images
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g,'<img src="$2" alt="$1">')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
+    // unordered list
+    .replace(/(^- .+$(\n^- .+$)*)/gm, m=>'<ul>'+m.split('\n').map(l=>`<li>${l.slice(2)}</li>`).join('')+'</ul>')
+    // ordered list
+    .replace(/(^\d+\. .+$(\n^\d+\. .+$)*)/gm, m=>'<ol>'+m.split('\n').map(l=>`<li>${l.replace(/^\d+\. /,'')}</li>`).join('')+'</ol>')
+    // paragraphs
+    .split(/\n\n+/)
+    .map(block => {
+      if (/^<(h[1-6]|ul|ol|pre|hr|blockquote)/.test(block)) return block;
+      return `<p>${block.replace(/\n/g,'<br>')}</p>`;
+    })
+    .join('\n');
+  return html;
+}
+
+/* ── Views ── */
+let currentSlug = null;
+let editingSlug = null;
+let showingRaw = false;
+let showingPreview = false;
+let editShowingPreview = false;
+
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  if (name === 'list') renderList();
+  if (name === 'home') {
+    // stop cursor blink after 3s
+    setTimeout(()=>{ const c=document.getElementById('cursor'); if(c) c.style.display='none'; }, 3000);
+  }
+}
+
+/* ── Editor helpers ── */
+function onEditorInput() {
+  const v = document.getElementById('editor').value;
+  document.getElementById('char-count').textContent = v.length.toLocaleString() + ' chars';
+  if (showingPreview) document.getElementById('preview-pane').innerHTML = renderMD(v);
+}
+
+function togglePreview() {
+  showingPreview = !showingPreview;
+  const ta = document.getElementById('editor');
+  const pane = document.getElementById('preview-pane');
+  const btn = document.getElementById('preview-toggle-btn');
+  if (showingPreview) {
+    pane.innerHTML = renderMD(ta.value);
+    pane.style.display = 'block';
+    ta.style.display = 'none';
+    btn.classList.add('active');
+    btn.textContent = '✎ edit';
+  } else {
+    pane.style.display = 'none';
+    ta.style.display = 'block';
+    btn.classList.remove('active');
+    btn.textContent = '⟨ preview';
+  }
+}
+
+function toggleEditPreview() {
+  editShowingPreview = !editShowingPreview;
+  const ta = document.getElementById('edit-editor');
+  const pane = document.getElementById('edit-preview-pane');
+  const btn = document.getElementById('edit-preview-btn');
+  if (editShowingPreview) {
+    pane.innerHTML = renderMD(ta.value);
+    pane.style.display = 'block';
+    ta.style.display = 'none';
+    btn.classList.add('active');
+    btn.textContent = '✎ edit';
+  } else {
+    pane.style.display = 'none';
+    ta.style.display = 'block';
+    btn.classList.remove('active');
+    btn.textContent = '⟨ preview';
+  }
+}
+
+function onEditInput() {
+  if (editShowingPreview) {
+    document.getElementById('edit-preview-pane').innerHTML = renderMD(document.getElementById('edit-editor').value);
+  }
+}
+
+function wrap(before, after) {
+  const ta = document.getElementById('editor');
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  const sel = ta.value.slice(s, e) || 'text';
+  ta.value = ta.value.slice(0, s) + before + sel + after + ta.value.slice(e);
+  ta.focus();
+  ta.selectionStart = s + before.length;
+  ta.selectionEnd = s + before.length + sel.length;
+  onEditorInput();
+}
+function wrapEdit(before, after) {
+  const ta = document.getElementById('edit-editor');
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  const sel = ta.value.slice(s, e) || 'text';
+  ta.value = ta.value.slice(0, s) + before + sel + after + ta.value.slice(e);
+  ta.focus();
+  ta.selectionStart = s + before.length;
+  ta.selectionEnd = s + before.length + sel.length;
+}
+
+function insertLine(prefix) {
+  const ta = document.getElementById('editor');
+  const s = ta.selectionStart;
+  const lineStart = ta.value.lastIndexOf('\n', s-1)+1;
+  ta.value = ta.value.slice(0,lineStart) + prefix + ta.value.slice(lineStart);
+  ta.focus();
+  onEditorInput();
+}
+
+function clearEditor() {
+  document.getElementById('editor').value = '';
+  document.getElementById('slug-input').value = '';
+  document.getElementById('key-input').value = '';
+  document.getElementById('char-count').textContent = '0 chars';
+  if (showingPreview) togglePreview();
+}
+
+function insertMDGuide() {
+  document.getElementById('editor').value = `# Markdown Guide
+
+**Bold** and *italic* text
+
+## Lists
+- Item one
+- Item two
+- Item three
+
+## Code
+Inline \`code\` or a block:
+
+\`\`\`
+function hello() {
+  console.log("Hello, world!");
+}
+\`\`\`
+
+## Quotes
+> "The best way to predict the future is to invent it."
+
+## Links
+[Rentry](https://rentry.co)
+
+---
+*Happy writing!*
+`;
+  onEditorInput();
+}
+
+/* ── Publish ── */
+function generateSlug() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  return Array.from({length:8}, ()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+
+function publishPaste() {
+  const content = document.getElementById('editor').value.trim();
+  if (!content) { showToast('Write something first!', 'error'); return; }
+
+  let slug = document.getElementById('slug-input').value.trim()
+    .toLowerCase().replace(/[^a-z0-9-_]/g,'').slice(0,40);
+  if (!slug) slug = generateSlug();
+
+  const key = document.getElementById('key-input').value.trim();
+  const db = getDB();
+
+  if (db[slug]) {
+    showToast('URL taken — try another', 'error');
+    document.getElementById('slug-input').focus();
+    return;
+  }
+
+  db[slug] = { content, key, createdAt: Date.now() };
+  saveDB(db);
+
+  showToast('Published!', 'success');
+  clearEditor();
+  openPaste(slug);
+}
+
+/* ── Paste view ── */
+function openPaste(slug) {
+  const db = getDB();
+  const paste = db[slug];
+  if (!paste) { showToast('Paste not found', 'error'); showView('home'); return; }
+
+  currentSlug = slug;
+  showingRaw = false;
+
+  document.getElementById('paste-slug-display').textContent = slug;
+  document.getElementById('paste-rendered').innerHTML = renderMD(paste.content);
+  document.getElementById('paste-rendered').style.display = 'block';
+  document.getElementById('raw-content').textContent = paste.content;
+  document.getElementById('raw-content').style.display = 'none';
+  document.getElementById('raw-toggle-btn').textContent = 'Raw';
+
+  showView('paste');
+}
+
+function toggleRaw() {
+  showingRaw = !showingRaw;
+  document.getElementById('paste-rendered').style.display = showingRaw ? 'none' : 'block';
+  document.getElementById('raw-content').style.display = showingRaw ? 'block' : 'none';
+  document.getElementById('raw-toggle-btn').textContent = showingRaw ? 'Rendered' : 'Raw';
+}
+
+function copyPasteUrl() {
+  const url = `${location.href.split('?')[0]}?p=${currentSlug}`;
+  navigator.clipboard.writeText(url).then(()=>showToast('Link copied!')).catch(()=>{
+    prompt('Copy this link:', url);
+  });
+}
+
+/* ── Edit ── */
+function editPaste() {
+  const db = getDB();
+  const paste = db[currentSlug];
+  if (paste.key) {
+    openModal('edit-key-modal');
+  } else {
+    startEdit(currentSlug);
+  }
+}
+
+function confirmEditKey() {
+  const input = document.getElementById('edit-key-modal-input').value.trim();
+  const db = getDB();
+  const paste = db[currentSlug];
+  if (paste.key && paste.key !== input) {
+    showToast('Wrong edit key', 'error');
+    return;
+  }
+  closeModal('edit-key-modal');
+  document.getElementById('edit-key-modal-input').value = '';
+  startEdit(currentSlug);
+}
+
+function startEdit(slug) {
+  const db = getDB();
+  editingSlug = slug;
+  document.getElementById('edit-editor').value = db[slug].content;
+  document.getElementById('edit-url-hint').textContent = `Editing rentry.co/${slug}`;
+  if (editShowingPreview) toggleEditPreview();
+  showView('edit');
+}
+
+function saveEdit() {
+  const content = document.getElementById('edit-editor').value.trim();
+  if (!content) { showToast('Content cannot be empty', 'error'); return; }
+  const db = getDB();
+  db[editingSlug].content = content;
+  db[editingSlug].updatedAt = Date.now();
+  saveDB(db);
+  showToast('Saved!', 'success');
+  openPaste(editingSlug);
+}
+
+function cancelEdit() {
+  openPaste(currentSlug || editingSlug);
+}
+
+/* ── Delete ── */
+function openDeleteModal() { openModal('delete-modal'); }
+
+function confirmDelete() {
+  const input = document.getElementById('delete-key-input').value.trim();
+  const db = getDB();
+  const paste = db[currentSlug];
+  if (paste.key && paste.key !== input) {
+    showToast('Wrong edit key', 'error');
+    return;
+  }
+  delete db[currentSlug];
+  saveDB(db);
+  closeModal('delete-modal');
+  document.getElementById('delete-key-input').value = '';
+  showToast('Paste deleted');
+  currentSlug = null;
+  showView('home');
+}
+
+/* ── List ── */
+function renderList() {
+  const db = getDB();
+  const slugs = Object.keys(db).sort((a,b)=>(db[b].createdAt||0)-(db[a].createdAt||0));
+  const el = document.getElementById('pastes-list');
+  if (!slugs.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div style="font-size:32px">📋</div>
+      <p>No pastes yet. <a href="javascript:void(0)" onclick="showView('home')" style="color:var(--accent)">Create one!</a></p>
+    </div>`;
+    return;
+  }
+  el.innerHTML = slugs.map(slug => {
+    const p = db[slug];
+    const preview = p.content.replace(/[#*`>\n]/g,' ').slice(0,80);
+    const d = new Date(p.createdAt);
+    const when = d.toLocaleDateString();
+    return `<div class="paste-row" onclick="openPaste('${slug}')">
+      <span class="paste-row-url">${slug}</span>
+      <span class="paste-row-preview">${preview}</span>
+      <span class="paste-row-time">${when}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ── Modal helpers ── */
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+/* ── Toast ── */
+let toastTimer;
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' '+type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.className='toast'; }, 2600);
+}
+
+/* ── URL routing (share links) ── */
+const params = new URLSearchParams(location.search);
+const slugParam = params.get('p');
+if (slugParam) {
+  const db = getDB();
+  if (db[slugParam]) { openPaste(slugParam); }
+  else {
+    showToast('Paste not found or expired', 'error');
+  }
+}
+
+/* ── Stop cursor after 3s ── */
+setTimeout(()=>{ const c=document.getElementById('cursor'); if(c) c.style.display='none'; }, 3000);
+
+/* ── Set base URL ── */
+document.getElementById('base-url-prefix').textContent = location.hostname + '/';
+</script>
 </body>
 </html>
