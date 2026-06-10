@@ -1,655 +1,697 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JSON PasteBin - Simple Text Extraction</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.18/index.css" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <title>حفظ الأسماء في JSON - نظام تخزين متكامل</title>
     <style>
-        body { font-family: 'Inter', sans-serif; background: #0d1117; color: #c9d1d9; }
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.1); border-radius: 50%; border-top-color: #58a6ff; animation: spin 1s ease-in-out infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        pre { white-space: pre-wrap; word-wrap: break-word; }
-        textarea, input { background: #161b22 !important; color: #c9d1d9 !important; border-color: #30363d !important; }
-        textarea:focus, input:focus { border-color: #58a6ff !important; outline: none; }
-        .modal-backdrop { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Tahoma', 'Arial', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        /* تأثير خلفية متحركة */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="10" cy="10" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="90" cy="20" r="3" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="85" r="2" fill="rgba(255,255,255,0.1)"/></svg>');
+            pointer-events: none;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 25px;
+            padding: 40px;
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.3);
+            max-width: 650px;
+            width: 100%;
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.5s ease-in;
+            position: relative;
+            z-index: 1;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            color: #555;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        input {
+            flex: 1;
+            padding: 14px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .button-group button {
+            flex: 1;
+            justify-content: center;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            min-height: 150px;
+            display: none;
+            border: 1px solid #e0e0e0;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result h3 {
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 18px;
+        }
+
+        .names-list {
+            list-style: none;
+            padding: 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .names-list li {
+            padding: 12px;
+            background: white;
+            margin: 8px 0;
+            border-radius: 10px;
+            border-right: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .names-list li:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .name-text {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .name-date {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .delete-btn {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .delete-btn:hover {
+            background: #ff3838;
+            transform: scale(1.05);
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            padding: 10px;
+            background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .empty-state svg {
+            margin-bottom: 10px;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+            
+            .input-wrapper {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .names-list li {
+                flex-direction: column;
+                gap: 8px;
+                text-align: center;
+            }
+        }
+
+        /* تخصيص شريط التمرير */
+        .names-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .names-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .names-list::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            z-index: 1000;
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
-    
-    <nav class="bg-[#161b22] border-b border-[#30363d] sticky top-0 z-50">
-        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <a href="#home" class="text-xl font-bold flex items-center gap-2 hover:text-[#58a6ff] transition">
-                <i class="fa-solid fa-code text-[#58a6ff]"></i> JSON PasteBin
-            </a>
-            <div class="flex gap-4 text-sm font-medium">
-                <a href="#home" class="text-gray-300 hover:text-white transition">New Paste</a>
-                <a href="#dashboard" class="text-gray-300 hover:text-white transition">My Pastes</a>
-            </div>
+<body>
+    <div class="container">
+        <h1>
+            <span>📝</span>
+            نظام حفظ الأسماء
+            <span>💾</span>
+        </h1>
+        <div class="subtitle">
+            حفظ الأسماء في ملف JSON مع إمكانية التحميل والعرض
         </div>
-    </nav>
-
-    <main id="app" class="container mx-auto px-4 py-8 flex-grow fade-in">
-        <div class="text-center py-20">
-            <div class="spinner"></div>
-            <p class="mt-4 text-gray-500">Loading...</p>
-        </div>
-    </main>
-
-    <!-- Password Modal -->
-    <div id="passwordModal" class="fixed inset-0 modal-backdrop hidden items-center justify-center z-[100]">
-        <div class="bg-[#161b22] border border-[#30363d] rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
-            <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                <i class="fa-solid fa-lock text-[#58a6ff]"></i> Password Required
-            </h3>
-            <p class="text-gray-400 text-sm mb-4">This paste is protected. Enter the password to edit it.</p>
-            <input type="password" id="modalPassword" 
-                class="w-full px-4 py-3 rounded-md mb-4" 
-                placeholder="Enter password...">
-            <div id="modalError" class="text-red-400 text-sm mb-4 hidden">
-                <i class="fa-solid fa-circle-xmark"></i> Incorrect password
-            </div>
-            <div class="flex gap-3">
-                <button id="modalCancel" class="flex-1 bg-[#30363d] text-white py-2 px-4 rounded-md hover:bg-[#30363d]/80 transition font-bold">
-                    Cancel
-                </button>
-                <button id="modalSubmit" class="flex-1 bg-[#238636] text-white py-2 px-4 rounded-md hover:bg-[#2ea043] transition font-bold">
-                    Unlock
+        
+        <div class="form-group">
+            <label>✏️ أدخل الاسم الجديد:</label>
+            <div class="input-wrapper">
+                <input type="text" id="nameInput" placeholder="مثال: أحمد محمد" autocomplete="off">
+                <button id="saveBtn">
+                    <span>💾</span> حفظ الاسم
                 </button>
             </div>
         </div>
-    </div>
 
-    <div id="toast" class="fixed bottom-5 right-5 bg-[#21262d] text-white px-6 py-3 rounded-lg shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3 z-50 border border-[#30363d]">
-        <i id="toast-icon" class="fa-solid fa-circle-check text-green-400"></i>
-        <span id="toast-msg"></span>
+        <div class="button-group">
+            <button id="loadBtn" class="btn-secondary">
+                <span>📋</span> عرض جميع الأسماء
+            </button>
+            <button id="downloadBtn" class="btn-success">
+                <span>⬇️</span> تحميل ملف JSON
+            </button>
+            <button id="clearAllBtn" class="btn-danger">
+                <span>🗑️</span> مسح الكل
+            </button>
+        </div>
+
+        <div id="result" class="result"></div>
     </div>
 
     <script>
-    // ============================================
-    // SIMPLE PASTEBIN - FIXED FOR BEAUTIFULSOUP
-    // ============================================
-    
-    const app = {
-        encode(str) {
-            try { return btoa(unescape(encodeURIComponent(str))); } 
-            catch(e) { return btoa(str); }
-        },
+        // تعريف المتغيرات
+        let namesData = [];
+        const STORAGE_KEY = 'names_json_data';
         
-        decode(str) {
-            try { return decodeURIComponent(escape(atob(str))); } 
-            catch(e) { return atob(str); }
-        },
+        // تحميل البيانات من localStorage عند بدء التشغيل
+        function loadDataFromStorage() {
+            const storedData = localStorage.getItem(STORAGE_KEY);
+            if (storedData) {
+                try {
+                    namesData = JSON.parse(storedData);
+                    showToast(`✅ تم تحميل ${namesData.length} اسم محفوظ`, 'success');
+                } catch(e) {
+                    namesData = [];
+                }
+            } else {
+                namesData = [];
+                // إنشاء ملف JSON فارغ مبدئيًا
+                saveToStorage();
+                console.log('تم إنشاء ملف JSON فارغ');
+            }
+        }
         
-        async hashPassword(password) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(password);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        },
+        // حفظ البيانات إلى localStorage
+        function saveToStorage() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(namesData));
+        }
         
-        escapeHtml(text) {
-            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-            return text.replace(/[&<>"']/g, m => map[m]);
-        },
-        
-        showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            const icon = document.getElementById('toast-icon');
-            document.getElementById('toast-msg').textContent = message;
-            icon.className = type === 'error' 
-                ? 'fa-solid fa-circle-xmark text-red-400' 
-                : 'fa-solid fa-circle-check text-green-400';
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
-        },
-        
-        copy(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                this.showToast('Copied!', 'success');
-            }).catch(() => prompt('Copy:', text));
-        },
-        
-        getBaseUrl() {
-            return window.location.origin + window.location.pathname;
-        },
-        
-        showPasswordModal() {
-            return new Promise((resolve) => {
-                const modal = document.getElementById('passwordModal');
-                const input = document.getElementById('modalPassword');
-                const error = document.getElementById('modalError');
-                const submit = document.getElementById('modalSubmit');
-                const cancel = document.getElementById('modalCancel');
-                
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-                input.value = '';
-                error.classList.add('hidden');
-                input.focus();
-                
-                const cleanup = () => {
-                    modal.classList.add('hidden');
-                    modal.classList.remove('flex');
-                    submit.removeEventListener('click', onSubmit);
-                    cancel.removeEventListener('click', onCancel);
-                    input.removeEventListener('keypress', onKeypress);
-                };
-                
-                const onSubmit = () => {
-                    const password = input.value;
-                    if (!password) {
-                        error.classList.remove('hidden');
-                        return;
-                    }
-                    cleanup();
-                    resolve(password);
-                };
-                
-                const onCancel = () => {
-                    cleanup();
-                    resolve(null);
-                };
-                
-                const onKeypress = (e) => {
-                    if (e.key === 'Enter') onSubmit();
-                };
-                
-                submit.addEventListener('click', onSubmit);
-                cancel.addEventListener('click', onCancel);
-                input.addEventListener('keypress', onKeypress);
-            });
-        },
-        
-        async createPaste(slug, content, password = null) {
-            const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
-            const filtered = pastes.filter(p => p.slug !== slug);
+        // عرض رسالة منبثقة
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = message;
+            document.body.appendChild(toast);
             
-            let passwordHash = null;
-            if (password) {
-                passwordHash = await this.hashPassword(password);
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+        
+        // إضافة اسم جديد
+        function addName(name) {
+            if (!name || !name.trim()) {
+                showToast('⚠️ الرجاء إدخال اسم صحيح', 'error');
+                return false;
             }
             
-            const paste = {
-                slug: slug,
-                encoded: this.encode(content),
-                created: new Date().toISOString(),
-                passwordHash: passwordHash
+            // التحقق من عدم تكرار الاسم (اختياري)
+            const exists = namesData.some(item => item.name === name.trim());
+            if (exists) {
+                showToast(`⚠️ الاسم "${name}" موجود بالفعل!`, 'warning');
+                return false;
+            }
+            
+            const newName = {
+                id: Date.now(),
+                name: name.trim(),
+                date: new Date().toISOString(),
+                dateFormatted: new Date().toLocaleString('ar-EG')
             };
             
-            filtered.push(paste);
-            localStorage.setItem('my_pastes', JSON.stringify(filtered));
-            return paste;
-        },
-        
-        async updatePaste(slug, content, passwordHash) {
-            const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
-            const pasteIndex = pastes.findIndex(p => p.slug === slug);
+            namesData.push(newName);
+            saveToStorage();
+            showToast(`✅ تم حفظ "${name}" بنجاح!`, 'success');
             
-            if (pasteIndex === -1) return null;
-            
-            const paste = pastes[pasteIndex];
-            
-            if (paste.passwordHash && paste.passwordHash !== passwordHash) {
-                return { error: 'Invalid password' };
+            // تحديث العرض تلقائيًا إذا كان مفتوحًا
+            const resultDiv = document.getElementById('result');
+            if (resultDiv.classList.contains('show')) {
+                displayNames();
             }
             
-            paste.encoded = this.encode(content);
-            paste.updated = new Date().toISOString();
-            
-            pastes[pasteIndex] = paste;
-            localStorage.setItem('my_pastes', JSON.stringify(pastes));
-            return paste;
-        },
-        
-        getViewUrl(slug, content, passwordHash = null) {
-            const encoded = this.encode(content);
-            let url = `${this.getBaseUrl()}?view&slug=${slug}&data=${encodeURIComponent(encoded)}`;
-            if (passwordHash) {
-                url += `&pw=${passwordHash}`;
-            }
-            return url;
-        },
-        
-        getJsonUrl(slug, content) {
-            const encoded = this.encode(content);
-            return `${this.getBaseUrl()}?api=json&slug=${slug}&data=${encodeURIComponent(encoded)}`;
-        },
-        
-        getRawUrl(slug, content) {
-            const encoded = this.encode(content);
-            return `${this.getBaseUrl()}?api=raw&slug=${slug}&data=${encodeURIComponent(encoded)}`;
-        },
-        
-        // ============================================
-        // FIXED API HANDLER - SIMPLE AND CLEAN
-        // ============================================
-        handleApi() {
-            const params = new URLSearchParams(window.location.search);
-            const api = params.get('api');
-            const slug = params.get('slug');
-            const data = params.get('data');
-            
-            // Handle JSON API
-            if (api === 'json' && slug && data) {
-                try {
-                    const content = this.decode(decodeURIComponent(data));
-                    document.body.innerHTML = '';
-                    document.head.innerHTML = '';
-                    document.title = `${slug} - JSON API`;
-                    
-                    const response = { 
-                        slug: slug, 
-                        content: content, 
-                        timestamp: new Date().toISOString()
-                    };
-                    
-                    const pre = document.createElement('pre');
-                    pre.style.cssText = 'font-family:monospace;padding:20px;background:#0d1117;color:#58a6ff;min-height:100vh;margin:0;font-size:14px;';
-                    pre.textContent = JSON.stringify(response, null, 2);
-                    document.body.appendChild(pre);
-                    return true;
-                } catch(e) {
-                    document.body.innerHTML = '<pre style="color:red;padding:20px;">Error decoding data</pre>';
-                    return true;
-                }
-            }
-            
-            // ============================================
-            // FIXED RAW API - RETURNS SIMPLE HTML WITH CLASSES
-            // ============================================
-            if (api === 'raw' && slug && data) {
-                try {
-                    const content = this.decode(decodeURIComponent(data));
-                    
-                    // Clear everything
-                    document.body.innerHTML = '';
-                    document.head.innerHTML = '';
-                    document.title = `${slug} - Raw Content`;
-                    
-                    // Add UTF-8 meta
-                    const meta = document.createElement('meta');
-                    meta.setAttribute('charset', 'UTF-8');
-                    document.head.appendChild(meta);
-                    
-                    // Create a VERY simple HTML structure
-                    // This structure is guaranteed to work with BeautifulSoup
-                    const html = `
-                        <!DOCTYPE html>
-                        <html>
-                        <head>
-                            <meta charset="UTF-8">
-                            <title>${slug} - Raw Content</title>
-                            <style>
-                                body {
-                                    margin: 0;
-                                    padding: 20px;
-                                    background: #f5f5f5;
-                                    font-family: monospace;
-                                }
-                                .paste-container {
-                                    max-width: 1200px;
-                                    margin: 0 auto;
-                                    background: white;
-                                    border: 1px solid #ddd;
-                                    border-radius: 8px;
-                                    padding: 20px;
-                                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                                }
-                                .paste-header {
-                                    border-bottom: 2px solid #e0e0e0;
-                                    padding-bottom: 10px;
-                                    margin-bottom: 20px;
-                                }
-                                .paste-slug {
-                                    font-size: 20px;
-                                    font-weight: bold;
-                                    color: #0366d6;
-                                }
-                                .paste-content {
-                                    background: #f8f8f8;
-                                    border: 1px solid #e0e0e0;
-                                    border-radius: 4px;
-                                    padding: 15px;
-                                    overflow-x: auto;
-                                }
-                                .paste-text {
-                                    font-family: 'Courier New', monospace;
-                                    font-size: 14px;
-                                    line-height: 1.6;
-                                    white-space: pre-wrap;
-                                    word-wrap: break-word;
-                                    margin: 0;
-                                    color: #333;
-                                }
-                                .paste-footer {
-                                    margin-top: 20px;
-                                    padding-top: 10px;
-                                    border-top: 1px solid #e0e0e0;
-                                    font-size: 12px;
-                                    color: #666;
-                                }
-                            </style>
-                        </head>
-                        <body>
-                            <div class="paste-container">
-                                <div class="paste-header">
-                                    <div class="paste-slug">📄 /${this.escapeHtml(slug)}</div>
-                                </div>
-                                <div class="paste-content">
-                                    <pre class="paste-text">${this.escapeHtml(content)}</pre>
-                                </div>
-                                <div class="paste-footer">
-                                    Generated: ${new Date().toISOString()} | Raw Text API
-                                </div>
-                            </div>
-                        </body>
-                        </html>
-                    `;
-                    
-                    document.write(html);
-                    document.close();
-                    return true;
-                    
-                } catch(e) {
-                    document.body.innerHTML = `<div style="color:red;padding:20px;">Error: ${e.message}</div>`;
-                    return true;
-                }
-            }
-            return false;
-        },
-
-        renderApiInfo(container, jsonUrl, rawUrl) {
-            container.innerHTML = `
-                <div class="bg-green-900/30 border border-green-700/50 text-green-400 text-xs p-3 rounded-lg mb-4">
-                    <i class="fa-solid fa-circle-check"></i> 
-                    <strong>Ready!</strong> Use these URLs to access your content.
-                </div>
-                
-                <div class="bg-[#0d1117] rounded-lg p-4 border border-[#30363d]">
-                    <p class="text-xs text-gray-400 mb-2 font-semibold">📦 JSON API:</p>
-                    <div class="flex items-center gap-2">
-                        <code class="flex-1 text-xs text-green-400 break-all bg-[#161b22] p-2 rounded">${jsonUrl}</code>
-                        <button onclick="app.copy('${jsonUrl}')" class="text-gray-400 hover:text-white p-2">📋</button>
-                    </div>
-                </div>
-                
-                <div class="bg-[#0d1117] rounded-lg p-4 border border-[#30363d]">
-                    <p class="text-xs text-gray-400 mb-2 font-semibold">📄 Raw Text API (for BeautifulSoup):</p>
-                    <div class="flex items-center gap-2">
-                        <code class="flex-1 text-xs text-yellow-400 break-all bg-[#161b22] p-2 rounded">${rawUrl}</code>
-                        <button onclick="app.copy('${rawUrl}')" class="text-gray-400 hover:text-white p-2">📋</button>
-                    </div>
-                </div>
-                
-                <div class="bg-[#0d1117] rounded-lg p-4 border border-[#30363d]">
-                    <p class="text-xs text-gray-400 mb-3 font-semibold">🐍 Python Code (Working):</p>
-                    <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto"><code>import requests
-from bs4 import BeautifulSoup
-
-url = "${rawUrl}"
-r = requests.get(url)
-soup = BeautifulSoup(r.text, 'html.parser')
-
-# Method 1: Find by class
-content_div = soup.find('div', class_='paste-content')
-if content_div:
-    text = content_div.find('pre', class_='paste-text').text
-    print(text)
-
-# Method 2: Find by class directly
-text = soup.find('pre', class_='paste-text').text
-print(text)</code></pre>
-                </div>
-            `;
-        },
-        
-        renderHome(container) {
-            container.innerHTML = `
-                <div class="max-w-3xl mx-auto bg-[#161b22] p-8 rounded-xl border border-[#30363d]">
-                    <h2 class="text-2xl font-bold mb-2 text-white">
-                        <i class="fa-solid fa-file-circle-plus text-[#58a6ff]"></i> Create New Paste
-                    </h2>
-                    <form id="createForm" class="space-y-5">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-300 mb-1">Slug</label>
-                            <input type="text" id="slug" required pattern="[a-zA-Z0-9_-]+" 
-                                class="w-full px-4 py-3 rounded-md font-mono" 
-                                placeholder="my-paste">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-300 mb-1">Password (Optional)</label>
-                            <input type="password" id="password" class="w-full px-4 py-3 rounded-md">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-300 mb-1">Content</label>
-                            <textarea id="content" required rows="14" class="w-full px-4 py-3 rounded-md text-sm font-mono"></textarea>
-                        </div>
-                        <button type="submit" class="w-full bg-[#238636] text-white py-3 rounded-md hover:bg-[#2ea043] transition font-bold">
-                            Create Paste
-                        </button>
-                    </form>
-                </div>
-            `;
-            
-            document.getElementById('createForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const slug = document.getElementById('slug').value.trim().toLowerCase();
-                const content = document.getElementById('content').value;
-                const password = document.getElementById('password').value;
-                
-                if (!/^[a-zA-Z0-9_-]{3,50}$/.test(slug)) {
-                    this.showToast('Invalid slug', 'error');
-                    return;
-                }
-                
-                const btn = e.target.querySelector('button');
-                btn.innerHTML = '<div class="spinner"></div> Creating...';
-                btn.disabled = true;
-
-                await this.createPaste(slug, content, password);
-                const viewUrl = this.getViewUrl(slug, content);
-                window.location.href = viewUrl;
-            });
-        },
-        
-        renderEdit(container, slug, content, passwordHash) {
-            container.innerHTML = `
-                <div class="max-w-3xl mx-auto bg-[#161b22] p-8 rounded-xl border border-[#30363d]">
-                    <h2 class="text-2xl font-bold mb-2 text-white">Edit: /${slug}</h2>
-                    <form id="editForm" class="space-y-5">
-                        <textarea id="editContent" required rows="14" 
-                            class="w-full px-4 py-3 rounded-md text-sm font-mono">${this.escapeHtml(content)}</textarea>
-                        <div class="flex gap-3">
-                            <button type="button" onclick="history.back()" class="flex-1 bg-[#30363d] text-white py-3 rounded-md">Cancel</button>
-                            <button type="submit" class="flex-1 bg-[#238636] text-white py-3 rounded-md">Save</button>
-                        </div>
-                    </form>
-                </div>
-            `;
-            
-            document.getElementById('editForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const newContent = document.getElementById('editContent').value;
-                const btn = e.target.querySelector('button[type="submit"]');
-                btn.innerHTML = '<div class="spinner"></div> Saving...';
-                btn.disabled = true;
-
-                const result = await this.updatePaste(slug, newContent, passwordHash);
-                
-                if (result && result.error) {
-                    this.showToast(result.error, 'error');
-                    btn.innerHTML = 'Save';
-                    btn.disabled = false;
-                    return;
-                }
-                
-                this.showToast('Updated!', 'success');
-                setTimeout(() => {
-                    const viewUrl = this.getViewUrl(slug, newContent);
-                    window.location.href = viewUrl;
-                }, 1000);
-            });
-        },
-        
-        renderView(container) {
-            const params = new URLSearchParams(window.location.search);
-            const slug = params.get('slug');
-            const data = params.get('data');
-            const urlPasswordHash = params.get('pw');
-            
-            if (!slug || !data) {
-                container.innerHTML = `<div class="text-center py-20"><a href="${this.getBaseUrl()}" class="text-[#58a6ff]">Create New</a></div>`;
-                return;
-            }
-            
-            let content;
-            try {
-                content = this.decode(decodeURIComponent(data));
-            } catch(e) {
-                container.innerHTML = `<div class="text-center py-20 text-red-400">Error</div>`;
-                return;
-            }
-            
-            const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
-            const localPaste = pastes.find(p => p.slug === slug);
-            const storedPasswordHash = localPaste?.passwordHash;
-            const jsonUrl = this.getJsonUrl(slug, content);
-            const rawUrl = this.getRawUrl(slug, content);
-            const isProtected = !!storedPasswordHash;
-            const hasValidPassword = urlPasswordHash && storedPasswordHash && urlPasswordHash === storedPasswordHash;
-            
-            container.innerHTML = `
-                <div class="max-w-4xl mx-auto">
-                    <div class="bg-[#161b22] rounded-xl border border-[#30363d] mb-6">
-                        <div class="p-5 border-b border-[#30363d] flex justify-between items-center">
-                            <h1 class="text-xl font-mono text-[#58a6ff]">/${slug}</h1>
-                            <div class="flex gap-2">
-                                <button id="editBtn" class="bg-[#f0883e] text-white px-4 py-2 rounded-lg text-sm">Edit</button>
-                                <button onclick="app.copy('${jsonUrl}')" class="bg-[#1f6feb] text-white px-4 py-2 rounded-lg text-sm">JSON</button>
-                                <button onclick="app.copy('${rawUrl}')" class="bg-[#30363d] text-white px-4 py-2 rounded-lg text-sm">Raw URL</button>
-                            </div>
-                        </div>
-                        <div class="p-6">
-                            <pre class="text-sm bg-[#0d1117] p-5 rounded-lg overflow-x-auto">${this.escapeHtml(content)}</pre>
-                        </div>
-                    </div>
-                    <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-6">
-                        <h3 class="font-bold mb-4">API Access</h3>
-                        <div id="apiInfoContainer"></div>
-                    </div>
-                </div>
-            `;
-            
-            this.renderApiInfo(document.getElementById('apiInfoContainer'), jsonUrl, rawUrl);
-            
-            document.getElementById('editBtn').addEventListener('click', async () => {
-                if (!isProtected) {
-                    this.renderEdit(container, slug, content, null);
-                    return;
-                }
-                if (hasValidPassword) {
-                    this.renderEdit(container, slug, content, urlPasswordHash);
-                    return;
-                }
-                const password = await this.showPasswordModal();
-                if (!password) return;
-                const inputHash = await this.hashPassword(password);
-                if (inputHash !== storedPasswordHash) {
-                    this.showToast('Wrong password', 'error');
-                    return;
-                }
-                const editUrl = `${this.getBaseUrl()}?edit&slug=${slug}&data=${encodeURIComponent(this.encode(content))}&pw=${inputHash}`;
-                window.location.href = editUrl;
-            });
-        },
-        
-        renderDashboard(container) {
-            const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
-            container.innerHTML = `
-                <div class="max-w-6xl mx-auto">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold">My Pastes (${pastes.length})</h2>
-                        <a href="${this.getBaseUrl()}" class="bg-[#238636] text-white px-5 py-3 rounded-lg">New Paste</a>
-                    </div>
-                    <div class="bg-[#161b22] rounded-xl border border-[#30363d] overflow-hidden">
-                        ${pastes.length === 0 ? '<div class="text-center py-16">No pastes yet</div>' : `
-                            <table class="w-full">
-                                <thead class="bg-[#0d1117]">
-                                    <tr><th class="py-4 px-6 text-left">Slug</th><th class="py-4 px-6 text-left">Created</th><th class="py-4 px-6 text-left">Actions</th></tr>
-                                </thead>
-                                <tbody>
-                                    ${pastes.map(p => {
-                                        let content;
-                                        try { content = app.decode(p.encoded); } catch(e) { content = ''; }
-                                        const viewUrl = app.getViewUrl(p.slug, content, p.passwordHash);
-                                        return `<tr class="border-t border-[#30363d]"><td class="py-4 px-6 font-mono">/${p.slug}</td><td class="py-4 px-6">${new Date(p.created).toLocaleDateString()}</td><td class="py-4 px-6"><a href="${viewUrl}" class="text-blue-400">View</a> <button onclick="app.deletePaste('${p.slug}')" class="text-red-400 ml-3">Delete</button></td></tr>`;
-                                    }).join('')}
-                                </tbody>
-                            </table>
-                        `}
-                    </div>
-                </div>
-            `;
-        },
-        
-        deletePaste(slug) {
-            if (confirm(`Delete ${slug}?`)) {
-                const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
-                const filtered = pastes.filter(p => p.slug !== slug);
-                localStorage.setItem('my_pastes', JSON.stringify(filtered));
-                this.showToast('Deleted!', 'success');
-                this.renderDashboard(document.getElementById('app'));
-            }
-        },
-        
-        route() {
-            const params = new URLSearchParams(window.location.search);
-            const main = document.getElementById('app');
-            
-            if (this.handleApi()) return;
-            
-            main.innerHTML = '';
-            
-            if (params.get('edit') !== null) {
-                const slug = params.get('slug');
-                const data = params.get('data');
-                const passwordHash = params.get('pw');
-                if (slug && data) {
-                    try {
-                        const content = this.decode(decodeURIComponent(data));
-                        const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
-                        const localPaste = pastes.find(p => p.slug === slug);
-                        if (localPaste?.passwordHash && (!passwordHash || passwordHash !== localPaste.passwordHash)) {
-                            main.innerHTML = `<div class="text-center py-20">Password required</div>`;
-                            return;
-                        }
-                        this.renderEdit(main, slug, content, passwordHash);
-                    } catch(e) { this.renderHome(main); }
-                } else { this.renderHome(main); }
-            } else if (params.get('view') !== null) {
-                this.renderView(main);
-            } else if (window.location.hash === '#dashboard') {
-                this.renderDashboard(main);
-            } else {
-                this.renderHome(main);
-            }
-        },
-        
-        init() {
-            this.route();
-            window.addEventListener('hashchange', () => this.route());
+            return true;
         }
-    };
-
-    document.addEventListener('DOMContentLoaded', () => app.init());
+        
+        // حذف اسم معين
+        function deleteName(id) {
+            const deletedName = namesData.find(item => item.id === id);
+            namesData = namesData.filter(item => item.id !== id);
+            saveToStorage();
+            showToast(`🗑️ تم حذف "${deletedName?.name || 'الاسم'}"`, 'info');
+            
+            // تحديث العرض
+            const resultDiv = document.getElementById('result');
+            if (resultDiv.classList.contains('show')) {
+                displayNames();
+            }
+        }
+        
+        // مسح جميع الأسماء
+        function clearAllNames() {
+            if (namesData.length === 0) {
+                showToast('📭 لا توجد أسماء للحذف', 'info');
+                return;
+            }
+            
+            if (confirm(`⚠️ هل أنت متأكد من حذف جميع الأسماء (${namesData.length} اسم)؟`)) {
+                namesData = [];
+                saveToStorage();
+                showToast('🗑️ تم مسح جميع الأسماء بنجاح', 'success');
+                
+                const resultDiv = document.getElementById('result');
+                if (resultDiv.classList.contains('show')) {
+                    displayNames();
+                } else {
+                    // إخفاء النتيجة إذا كانت ظاهرة
+                    resultDiv.classList.remove('show');
+                }
+            }
+        }
+        
+        // عرض جميع الأسماء
+        function displayNames() {
+            const resultDiv = document.getElementById('result');
+            
+            if (namesData.length === 0) {
+                resultDiv.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 50px;">📭</div>
+                        <p>لا توجد أسماء محفوظة بعد</p>
+                        <p style="font-size: 12px; margin-top: 10px;">يمكنك إضافة اسم جديد باستخدام الحقل أعلاه</p>
+                    </div>
+                `;
+                resultDiv.classList.add('show');
+                return;
+            }
+            
+            // إحصائيات
+            const today = new Date().toDateString();
+            const todayCount = namesData.filter(item => {
+                const itemDate = new Date(item.date).toDateString();
+                return itemDate === today;
+            }).length;
+            
+            let html = `
+                <div class="stats">
+                    <span>📊 المجموع: <strong>${namesData.length}</strong> اسم</span>
+                    <span>📅 اليوم: <strong>${todayCount}</strong> اسم</span>
+                </div>
+                <h3>
+                    <span>📋</span>
+                    قائمة الأسماء المحفوظة
+                    <span style="font-size: 12px;">(${namesData.length})</span>
+                </h3>
+                <ul class="names-list">
+            `;
+            
+            // عرض الأسماء من الأحدث إلى الأقدم
+            [...namesData].reverse().forEach(item => {
+                html += `
+                    <li>
+                        <div style="flex:1">
+                            <div class="name-text">📌 ${escapeHtml(item.name)}</div>
+                            <div class="name-date">📅 ${item.dateFormatted || new Date(item.date).toLocaleString('ar-EG')}</div>
+                        </div>
+                        <button class="delete-btn" onclick="deleteName(${item.id})">🗑️ حذف</button>
+                    </li>
+                `;
+            });
+            
+            html += `</ul>`;
+            resultDiv.innerHTML = html;
+            resultDiv.classList.add('show');
+        }
+        
+        // دالة لتجنب XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // تحميل ملف JSON إلى الجهاز
+        function downloadJSON() {
+            if (namesData.length === 0) {
+                showToast('⚠️ لا توجد بيانات للحفظ في ملف JSON', 'warning');
+                return;
+            }
+            
+            const jsonString = JSON.stringify(namesData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `names_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            showToast(`✅ تم تحميل ملف JSON يحتوي على ${namesData.length} اسم`, 'success');
+        }
+        
+        // رفع ملف JSON من الجهاز (استيراد)
+        function importJSON(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (Array.isArray(importedData)) {
+                        // دمج البيانات مع تجنب التكرار بناءً على الاسم
+                        const existingNames = new Set(namesData.map(item => item.name));
+                        let newCount = 0;
+                        
+                        importedData.forEach(item => {
+                            if (item.name && !existingNames.has(item.name)) {
+                                namesData.push({
+                                    id: Date.now() + Math.random(),
+                                    name: item.name,
+                                    date: new Date().toISOString(),
+                                    dateFormatted: new Date().toLocaleString('ar-EG')
+                                });
+                                newCount++;
+                            }
+                        });
+                        
+                        saveToStorage();
+                        showToast(`✅ تم استيراد ${newCount} اسم جديد من ملف JSON`, 'success');
+                        
+                        if (newCount > 0 && document.getElementById('result').classList.contains('show')) {
+                            displayNames();
+                        }
+                    } else {
+                        showToast('❌ ملف JSON غير صالح', 'error');
+                    }
+                } catch(error) {
+                    showToast('❌ خطأ في قراءة ملف JSON', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        // إنشاء زر استيراد مخفي
+        function createImportButton() {
+            const importBtn = document.createElement('button');
+            importBtn.innerHTML = '<span>📂</span> استيراد JSON';
+            importBtn.className = 'btn-secondary';
+            importBtn.style.background = 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)';
+            importBtn.style.color = '#333';
+            
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.json';
+            fileInput.style.display = 'none';
+            fileInput.onchange = (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    importJSON(e.target.files[0]);
+                }
+                fileInput.value = '';
+            };
+            
+            importBtn.onclick = () => fileInput.click();
+            
+            const buttonGroup = document.querySelector('.button-group');
+            buttonGroup.appendChild(importBtn);
+            document.body.appendChild(fileInput);
+        }
+        
+        // إعادة تعيين وإنشاء ملف JSON فارغ
+        function resetToEmptyJSON() {
+            if (confirm('⚠️ هذا الإجراء سيحذف جميع البيانات الحالية. هل تريد إنشاء ملف JSON فارغ جديد؟')) {
+                namesData = [];
+                saveToStorage();
+                showToast('📄 تم إنشاء ملف JSON فارغ جديد', 'success');
+                
+                const resultDiv = document.getElementById('result');
+                resultDiv.classList.remove('show');
+            }
+        }
+        
+        // تهيئة الصفحة والأحداث
+        function init() {
+            loadDataFromStorage();
+            
+            // ربط الأحداث
+            document.getElementById('saveBtn').addEventListener('click', () => {
+                const nameInput = document.getElementById('nameInput');
+                const name = nameInput.value;
+                if (addName(name)) {
+                    nameInput.value = '';
+                    nameInput.focus();
+                }
+            });
+            
+            document.getElementById('loadBtn').addEventListener('click', () => {
+                displayNames();
+            });
+            
+            document.getElementById('downloadBtn').addEventListener('click', () => {
+                downloadJSON();
+            });
+            
+            document.getElementById('clearAllBtn').addEventListener('click', () => {
+                clearAllNames();
+            });
+            
+            // الضغط على Enter في حقل الإدخال
+            document.getElementById('nameInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('saveBtn').click();
+                }
+            });
+            
+            // إضافة زر الاستيراد
+            createImportButton();
+            
+            // إضافة زر إنشاء ملف JSON فارغ (اختياري)
+            const resetBtn = document.createElement('button');
+            resetBtn.innerHTML = '<span>🆕</span> JSON فارغ';
+            resetBtn.className = 'btn-danger';
+            resetBtn.style.opacity = '0.7';
+            resetBtn.onclick = () => resetToEmptyJSON();
+            document.querySelector('.button-group').appendChild(resetBtn);
+            
+            // عرض عدد الأسماء المحفوظة في console
+            console.log(`🚀 تم تهيئة النظام - عدد الأسماء المحفوظة: ${namesData.length}`);
+            if (namesData.length === 0) {
+                console.log('📄 ملف JSON فارغ وجاهز للاستخدام');
+            }
+        }
+        
+        // بدء التطبيق عند تحميل الصفحة
+        window.addEventListener('DOMContentLoaded', init);
+        
+        // جعل deleteName دالة عامة
+        window.deleteName = deleteName;
     </script>
 </body>
 </html>
