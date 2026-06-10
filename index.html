@@ -1,20 +1,20 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Rentry - GitHub Pages</title>
+    <title>Secure Rentry - Encrypted Notes</title>
     
-    <!-- الخطوط -->
+    <!-- Fonts -->
     <link href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.18/index.css" rel="stylesheet">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Font Awesome للأيقونات -->
+    <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- CryptoJS للتشفير -->
+    <!-- CryptoJS for AES Encryption -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     
     <script>
@@ -56,39 +56,43 @@
             white-space: pre-wrap;
             word-wrap: break-word;
         }
+        .json-key { color: #0066cc; }
+        .json-string { color: #008000; }
+        .json-number { color: #cc6600; }
+        .json-boolean { color: #cc0066; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
     
-    <!-- ========== الشريط العلوي ========== -->
+    <!-- ========== Navigation Bar ========== -->
     <nav class="bg-indigo-600 text-white shadow-lg sticky top-0 z-50">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
             <a href="#home" class="text-2xl font-bold flex items-center gap-2 hover:text-indigo-100 transition">
-                <i class="fa-solid fa-lock"></i> Secure Notes
+                <i class="fa-solid fa-lock"></i> Secure Rentry
             </a>
             <div id="navLinks" class="flex gap-6 text-sm font-medium">
                 <a href="#home" class="hover:text-indigo-200 transition flex items-center gap-2">
-                    <i class="fa-solid fa-plus"></i> جديد
+                    <i class="fa-solid fa-plus"></i> New Page
                 </a>
                 <a href="#dashboard" class="hover:text-indigo-200 transition flex items-center gap-2">
-                    <i class="fa-solid fa-gauge-high"></i> لوحة التحكم
+                    <i class="fa-solid fa-gauge-high"></i> Dashboard
                 </a>
                 <button id="lockBtn" class="hidden hover:text-indigo-200 transition flex items-center gap-2" onclick="app.lock()">
-                    <i class="fa-solid fa-lock"></i> قفل
+                    <i class="fa-solid fa-lock"></i> Lock
                 </button>
             </div>
         </div>
     </nav>
 
-    <!-- ========== المحتوى الرئيسي ========== -->
+    <!-- ========== Main Content Area ========== -->
     <main id="app" class="container mx-auto px-4 py-8 flex-grow fade-in">
         <div class="text-center py-20">
             <div class="spinner"></div>
-            <p class="mt-4 text-gray-600">جاري التحميل...</p>
+            <p class="mt-4 text-gray-600">Loading...</p>
         </div>
     </main>
 
-    <!-- ========== الإشعارات ========== -->
+    <!-- ========== Toast Notifications ========== -->
     <div id="toast" class="fixed bottom-5 right-5 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3 z-50">
         <i id="toast-icon" class="fa-solid fa-circle-check text-green-400"></i>
         <span id="toast-msg"></span>
@@ -96,47 +100,50 @@
 
     <script>
     // ============================================
-    // التطبيق الكامل - يعمل على GitHub Pages فقط
+    // COMPLETE APP - GitHub Pages Only
+    // All data encrypted with AES-256
+    // Public JSON endpoints available
     // ============================================
     
     const app = {
         // ========================================
-        // المتغيرات
+        // State Variables
         // ========================================
-        masterKey: null,          // مفتاح التشفير (يتم إنشاؤه من كلمة المرور)
-        isUnlocked: false,        // هل تم فتح التطبيق؟
+        masterKey: null,          // Encryption key derived from password
+        isUnlocked: false,        // Is app unlocked?
+        publicSlugs: new Set(),   // Track which slugs are public
         
         // ========================================
-        // دوال التشفير
+        // Encryption Utilities
         // ========================================
         
-        // تشفير النص
+        // Encrypt text with AES
         encrypt(text, key) {
             return CryptoJS.AES.encrypt(text, key).toString();
         },
         
-        // فك تشفير النص
+        // Decrypt text with AES
         decrypt(ciphertext, key) {
             try {
                 const bytes = CryptoJS.AES.decrypt(ciphertext, key);
                 const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-                if (!decrypted) throw new Error('فشل فك التشفير');
+                if (!decrypted) throw new Error('Decryption failed');
                 return decrypted;
             } catch (e) {
                 return null;
             }
         },
         
-        // إنشاء مفتاح من كلمة المرور
+        // Derive encryption key from password
         deriveKey(password) {
-            return CryptoJS.SHA256(password + "secure_salt_2024").toString();
+            return CryptoJS.SHA256(password + "secure_rentry_salt_2024_v2").toString();
         },
         
         // ========================================
-        // دوال التخزين (مشفرة)
+        // Encrypted LocalStorage Operations
         // ========================================
         
-        // حفظ البيانات مشفرة
+        // Save encrypted data
         saveData(key, data) {
             if (!this.masterKey) return false;
             const encrypted = this.encrypt(JSON.stringify(data), this.masterKey);
@@ -144,7 +151,7 @@
             return true;
         },
         
-        // قراءة البيانات المشفرة
+        // Load and decrypt data
         loadData(key) {
             if (!this.masterKey) return null;
             const encrypted = localStorage.getItem('enc_' + key);
@@ -157,44 +164,35 @@
             }
         },
         
-        // حذف بيانات
+        // Delete encrypted data
         deleteData(key) {
             localStorage.removeItem('enc_' + key);
         },
         
-        // الحصول على كل المفاتيح المخزنة
-        getAllKeys() {
-            const keys = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && key.startsWith('enc_')) {
-                    keys.push(key.replace('enc_', ''));
-                }
-            }
-            return keys;
-        },
-        
         // ========================================
-        // دوال المصادقة
+        // Authentication
         // ========================================
         
-        // التحقق من وجود كلمة مرور محفوظة
+        // Check if password exists
         hasStoredPassword() {
-            const hash = localStorage.getItem('password_hash');
-            return hash !== null;
+            return localStorage.getItem('password_hash') !== null;
         },
         
-        // إنشاء كلمة مرور جديدة
-        async setupPassword(password) {
+        // Setup new password
+        setupPassword(password) {
             const hash = CryptoJS.SHA256(password).toString();
             localStorage.setItem('password_hash', hash);
             this.masterKey = this.deriveKey(password);
             this.isUnlocked = true;
-            this.saveData('pages', []); // تهيئة مصفوفة الصفحات
-            this.showToast('تم إنشاء كلمة المرور بنجاح!', 'success');
+            
+            // Initialize empty pages array
+            this.saveData('pages', []);
+            this.saveData('public_slugs', []);
+            
+            this.showToast('Password created successfully!', 'success');
         },
         
-        // التحقق من كلمة المرور
+        // Verify password
         verifyPassword(password) {
             const storedHash = localStorage.getItem('password_hash');
             if (!storedHash) return false;
@@ -202,50 +200,58 @@
             return inputHash === storedHash;
         },
         
-        // فتح التطبيق
+        // Unlock app
         unlock(password) {
             if (this.verifyPassword(password)) {
                 this.masterKey = this.deriveKey(password);
                 this.isUnlocked = true;
+                
+                // Load public slugs
+                const publicSlugs = this.loadData('public_slugs') || [];
+                this.publicSlugs = new Set(publicSlugs);
+                
                 return true;
             }
             return false;
         },
         
-        // قفل التطبيق
+        // Lock app
         lock() {
             this.masterKey = null;
             this.isUnlocked = false;
+            this.publicSlugs = new Set();
             this.navigate('login');
-            this.showToast('تم قفل التطبيق', 'success');
+            this.showToast('App locked', 'success');
         },
         
         // ========================================
-        // دوال الصفحات
+        // Page Management
         // ========================================
         
-        // الحصول على كل الصفحات
+        // Get all pages
         getPages() {
             return this.loadData('pages') || [];
         },
         
-        // حفظ كل الصفحات
+        // Save all pages
         savePages(pages) {
             this.saveData('pages', pages);
         },
         
-        // إنشاء صفحة جديدة
+        // Create new page
         createPage(slug, content) {
             const pages = this.getPages();
             
-            // التحقق من عدم وجود slug مكرر
+            // Check for duplicate slug
             if (pages.find(p => p.slug === slug)) {
-                return { success: false, error: 'هذا المعرف موجود بالفعل' };
+                return { success: false, error: 'This slug already exists' };
             }
             
             const newPage = {
                 slug: slug,
                 content: content,
+                isPublic: false,     // Public JSON access flag
+                publicToken: null,   // Token for public JSON access
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
@@ -256,19 +262,19 @@
             return { success: true, page: newPage };
         },
         
-        // الحصول على صفحة
+        // Get single page
         getPage(slug) {
             const pages = this.getPages();
             return pages.find(p => p.slug === slug) || null;
         },
         
-        // تحديث صفحة
+        // Update page
         updatePage(slug, content) {
             const pages = this.getPages();
             const index = pages.findIndex(p => p.slug === slug);
             
             if (index === -1) {
-                return { success: false, error: 'الصفحة غير موجودة' };
+                return { success: false, error: 'Page not found' };
             }
             
             pages[index].content = content;
@@ -278,16 +284,90 @@
             return { success: true, page: pages[index] };
         },
         
-        // حذف صفحة
+        // Delete page
         deletePage(slug) {
             let pages = this.getPages();
             pages = pages.filter(p => p.slug !== slug);
             this.savePages(pages);
+            
+            // Remove from public slugs
+            this.publicSlugs.delete(slug);
+            this.saveData('public_slugs', Array.from(this.publicSlugs));
+            
+            // Remove public data
+            localStorage.removeItem('public_' + slug);
+            
             return { success: true };
         },
         
         // ========================================
-        // دوال الواجهة
+        // Public JSON Access System
+        // ========================================
+        
+        // Toggle public access for a page
+        togglePublic(slug) {
+            const pages = this.getPages();
+            const index = pages.findIndex(p => p.slug === slug);
+            
+            if (index === -1) return { success: false, error: 'Page not found' };
+            
+            if (pages[index].isPublic) {
+                // Make private
+                pages[index].isPublic = false;
+                pages[index].publicToken = null;
+                this.publicSlugs.delete(slug);
+                localStorage.removeItem('public_' + slug);
+            } else {
+                // Make public
+                const token = CryptoJS.SHA256(slug + Date.now() + Math.random()).toString().substring(0, 32);
+                pages[index].isPublic = true;
+                pages[index].publicToken = token;
+                this.publicSlugs.add(slug);
+                
+                // Store public copy (unencrypted)
+                localStorage.setItem('public_' + slug, JSON.stringify({
+                    slug: slug,
+                    content: pages[index].content,
+                    token: token,
+                    created_at: pages[index].createdAt,
+                    updated_at: pages[index].updatedAt
+                }));
+            }
+            
+            this.savePages(pages);
+            this.saveData('public_slugs', Array.from(this.publicSlugs));
+            
+            return { 
+                success: true, 
+                isPublic: pages[index].isPublic,
+                publicUrl: pages[index].isPublic ? this.getPublicUrl(slug) : null
+            };
+        },
+        
+        // Check if page is public
+        isPagePublic(slug) {
+            return this.publicSlugs.has(slug);
+        },
+        
+        // Get public page data
+        getPublicPageData(slug) {
+            const data = localStorage.getItem('public_' + slug);
+            if (!data) return null;
+            try {
+                return JSON.parse(data);
+            } catch (e) {
+                return null;
+            }
+        },
+        
+        // Get public JSON URL
+        getPublicUrl(slug) {
+            const baseUrl = window.location.origin + window.location.pathname;
+            return `${baseUrl}?api=json&slug=${slug}`;
+        },
+        
+        // ========================================
+        // UI Utilities
         // ========================================
         
         showToast(message, type = 'success') {
@@ -299,10 +379,8 @@
             
             if (type === 'error') {
                 icon.className = 'fa-solid fa-circle-xmark text-red-400';
-                toast.className = toast.className.replace('bg-gray-800', 'bg-red-800');
             } else {
                 icon.className = 'fa-solid fa-circle-check text-green-400';
-                toast.className = toast.className.replace('bg-red-800', 'bg-gray-800');
             }
             
             toast.classList.remove('translate-y-20', 'opacity-0');
@@ -325,55 +403,60 @@
         },
         
         // ========================================
-        // عرض الصفحات
+        // Page Renderers
         // ========================================
         
-        // صفحة تسجيل الدخول / إنشاء كلمة المرور
+        // Login / Setup Password Page
         renderLogin(container) {
             const hasPassword = this.hasStoredPassword();
             
             container.innerHTML = `
-                <div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100 mt-10">
+                <div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-100 mt-10">
                     <div class="text-center mb-6">
-                        <div class="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="fa-solid fa-lock text-2xl text-indigo-600"></i>
+                        <div class="bg-indigo-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fa-solid fa-shield-halved text-3xl text-indigo-600"></i>
                         </div>
                         <h2 class="text-2xl font-bold text-gray-800">
-                            ${hasPassword ? 'فتح التطبيق' : 'إنشاء كلمة مرور'}
+                            ${hasPassword ? 'Unlock Your Vault' : 'Create Master Password'}
                         </h2>
                         <p class="text-gray-500 mt-2 text-sm">
                             ${hasPassword 
-                                ? 'أدخل كلمة المرور لفتح بياناتك المشفرة' 
-                                : 'أنشئ كلمة مرور قوية لتشفير بياناتك. لا يمكن استعادتها!'}
+                                ? 'Enter your master password to decrypt and access your data.' 
+                                : 'Create a strong master password. All your data will be encrypted with AES-256. This password cannot be recovered!'}
                         </p>
                     </div>
                     
                     <form id="passwordForm" class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">كلمة المرور</label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Master Password</label>
                             <input type="password" id="password" required 
-                                class="block w-full px-4 py-3 rounded-md border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" 
-                                placeholder="${hasPassword ? 'أدخل كلمة المرور' : 'أنشئ كلمة مرور قوية (8 أحرف على الأقل)'}"
-                                minlength="${hasPassword ? '1' : '8'}">
+                                class="block w-full px-4 py-3 rounded-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" 
+                                placeholder="${hasPassword ? 'Enter your master password' : 'Create a strong password (min 8 characters)'}"
+                                minlength="${hasPassword ? '1' : '8'}"
+                                autocomplete="off">
                         </div>
                         
                         ${!hasPassword ? `
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">تأكيد كلمة المرور</label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Confirm Password</label>
                             <input type="password" id="confirmPassword" required minlength="8" 
-                                class="block w-full px-4 py-3 rounded-md border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" 
-                                placeholder="أعد كتابة كلمة المرور">
+                                class="block w-full px-4 py-3 rounded-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" 
+                                placeholder="Re-enter your password"
+                                autocomplete="off">
                         </div>
                         ` : ''}
                         
-                        <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition font-bold shadow-md">
-                            ${hasPassword ? 'فتح' : 'إنشاء'}
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition font-bold shadow-md text-lg">
+                            <i class="fa-solid fa-key"></i> ${hasPassword ? 'Unlock' : 'Create Vault'}
                         </button>
                         
                         ${hasPassword ? `
-                        <button type="button" id="resetBtn" class="w-full bg-red-50 text-red-600 py-3 px-4 rounded-md hover:bg-red-100 transition font-bold border border-red-200">
-                            <i class="fa-solid fa-triangle-exclamation"></i> إعادة تعيين (حذف كل البيانات)
-                        </button>
+                        <div class="border-t border-gray-200 pt-4 mt-4">
+                            <button type="button" id="resetBtn" class="w-full bg-red-50 text-red-600 py-3 px-4 rounded-md hover:bg-red-100 transition font-bold border border-red-200">
+                                <i class="fa-solid fa-triangle-exclamation"></i> Reset Everything (Delete All Data)
+                            </button>
+                            <p class="text-xs text-gray-400 text-center mt-2">This will permanently delete all encrypted data</p>
+                        </div>
                         ` : ''}
                     </form>
                 </div>
@@ -386,37 +469,41 @@
                 if (!hasPassword) {
                     const confirmPassword = document.getElementById('confirmPassword').value;
                     if (password !== confirmPassword) {
-                        this.showToast('كلمتا المرور غير متطابقتين', 'error');
+                        this.showToast('Passwords do not match', 'error');
                         return;
                     }
                     if (password.length < 8) {
-                        this.showToast('كلمة المرور يجب أن تكون 8 أحرف على الأقل', 'error');
+                        this.showToast('Password must be at least 8 characters', 'error');
                         return;
                     }
                     this.setupPassword(password);
                     this.navigate('home');
                 } else {
                     if (this.unlock(password)) {
-                        this.showToast('تم الفتح بنجاح', 'success');
+                        this.showToast('Vault unlocked successfully!', 'success');
                         this.navigate('dashboard');
                     } else {
-                        this.showToast('كلمة المرور غير صحيحة', 'error');
+                        this.showToast('Invalid password', 'error');
                     }
                 }
             });
             
             if (hasPassword) {
                 document.getElementById('resetBtn').addEventListener('click', () => {
-                    if (confirm('هل أنت متأكد؟ سيتم حذف جميع البيانات المشفرة نهائياً!')) {
-                        localStorage.clear();
-                        this.showToast('تم حذف جميع البيانات', 'success');
-                        this.renderLogin(container);
+                    if (confirm('WARNING: This will permanently delete ALL your encrypted data!\n\nAre you absolutely sure?')) {
+                        if (confirm('FINAL WARNING: This action CANNOT be undone!\n\nDelete everything?')) {
+                            localStorage.clear();
+                            this.isUnlocked = false;
+                            this.masterKey = null;
+                            this.showToast('All data has been deleted', 'success');
+                            this.renderLogin(container);
+                        }
                     }
                 });
             }
         },
         
-        // الصفحة الرئيسية (إنشاء صفحة جديدة)
+        // Home Page - Create New
         renderHome(container) {
             if (!this.isUnlocked) {
                 this.navigate('login');
@@ -424,28 +511,34 @@
             }
             
             container.innerHTML = `
-                <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100">
+                <div class="max-w-3xl mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-100">
                     <h2 class="text-2xl font-bold mb-6 text-indigo-700 flex items-center gap-2">
-                        <i class="fa-solid fa-plus-circle"></i> إنشاء صفحة جديدة
+                        <i class="fa-solid fa-file-circle-plus"></i> Create New Page
                     </h2>
                     <form id="createForm" class="space-y-5">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">معرف الصفحة</label>
-                            <input type="text" id="slug" required pattern="[a-zA-Z0-9_-]+" 
-                                class="block w-full px-4 py-3 rounded-md border border-gray-300 font-mono" 
-                                placeholder="my-page">
-                            <p class="text-xs text-gray-500 mt-1">أحرف إنجليزية، أرقام، وشرطات فقط (3-50 حرف)</p>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Page Slug (URL Identifier)</label>
+                            <div class="flex rounded-md shadow-sm">
+                                <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm font-mono">
+                                    page/
+                                </span>
+                                <input type="text" id="slug" required pattern="[a-zA-Z0-9_-]+" 
+                                    class="flex-1 block w-full px-4 py-3 rounded-r-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono" 
+                                    placeholder="my-awesome-page">
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Letters, numbers, hyphens, and underscores only (3-50 characters)</p>
                         </div>
                         
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">المحتوى</label>
-                            <textarea id="content" required rows="12" 
-                                class="block w-full px-4 py-3 rounded-md border border-gray-300 font-mono text-sm" 
-                                placeholder="اكتب محتوى صفحتك هنا..."></textarea>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Content</label>
+                            <textarea id="content" required rows="14" 
+                                class="block w-full px-4 py-3 rounded-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm" 
+                                placeholder="Write your page content here...&#10;&#10;This content will be encrypted and stored securely."></textarea>
+                            <p class="text-xs text-gray-500 mt-1">Supports plain text and will be displayed as-is</p>
                         </div>
                         
-                        <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition font-bold shadow-md flex justify-center items-center gap-2">
-                            <i class="fa-solid fa-save"></i> حفظ ونشر
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition font-bold shadow-md flex justify-center items-center gap-2 text-lg">
+                            <i class="fa-solid fa-lock"></i> Encrypt & Save Page
                         </button>
                     </form>
                 </div>
@@ -453,17 +546,17 @@
             
             document.getElementById('createForm').addEventListener('submit', (e) => {
                 e.preventDefault();
-                const slug = document.getElementById('slug').value.trim();
+                const slug = document.getElementById('slug').value.trim().toLowerCase();
                 const content = document.getElementById('content').value;
                 
                 if (!/^[a-zA-Z0-9_-]{3,50}$/.test(slug)) {
-                    this.showToast('معرف غير صالح (أحرف إنجليزية وأرقام وشرطات فقط، 3-50 حرف)', 'error');
+                    this.showToast('Invalid slug: 3-50 characters, letters/numbers/hyphens/underscores only', 'error');
                     return;
                 }
                 
                 const result = this.createPage(slug, content);
                 if (result.success) {
-                    this.showToast('تم إنشاء الصفحة بنجاح!', 'success');
+                    this.showToast('Page created and encrypted successfully!', 'success');
                     this.navigate('view/' + slug);
                 } else {
                     this.showToast(result.error, 'error');
@@ -471,7 +564,7 @@
             });
         },
         
-        // عرض صفحة
+        // View Page
         renderView(container, slug) {
             if (!this.isUnlocked) {
                 this.navigate('login');
@@ -483,54 +576,135 @@
             if (!page) {
                 container.innerHTML = `
                     <div class="text-center py-20">
-                        <i class="fa-solid fa-circle-exclamation text-6xl text-gray-300 mb-4"></i>
-                        <h2 class="text-2xl font-bold text-gray-600">الصفحة غير موجودة</h2>
-                        <a href="#home" class="mt-4 inline-block text-indigo-600 hover:underline font-bold">العودة للرئيسية</a>
+                        <i class="fa-solid fa-file-circle-question text-7xl text-gray-300 mb-4"></i>
+                        <h2 class="text-2xl font-bold text-gray-600">Page Not Found</h2>
+                        <p class="text-gray-500 mt-2">The page "${slug}" doesn't exist</p>
+                        <a href="#home" class="mt-4 inline-block text-indigo-600 hover:underline font-bold">
+                            <i class="fa-solid fa-arrow-left"></i> Back to Home
+                        </a>
                     </div>
                 `;
                 return;
             }
             
+            const publicUrl = page.isPublic ? this.getPublicUrl(slug) : null;
+            
             container.innerHTML = `
                 <div class="max-w-4xl mx-auto">
-                    <div class="bg-white rounded-xl shadow-md border border-gray-100 mb-6">
-                        <div class="p-6 border-b border-gray-100 flex justify-between items-center flex-wrap gap-3">
+                    <!-- Page Content Card -->
+                    <div class="bg-white rounded-xl shadow-lg border border-gray-100 mb-6">
+                        <div class="p-6 border-b border-gray-100 flex justify-between items-start flex-wrap gap-4">
                             <div>
-                                <h1 class="text-2xl font-bold font-mono text-indigo-700">${page.slug}</h1>
-                                <p class="text-xs text-gray-500 mt-1">
-                                    تم الإنشاء: ${new Date(page.createdAt).toLocaleString('ar-IQ')}
-                                </p>
+                                <h1 class="text-2xl font-bold font-mono text-indigo-700">
+                                    <i class="fa-solid fa-file-lock"></i> ${page.slug}
+                                </h1>
+                                <div class="flex gap-4 mt-2 text-xs text-gray-500">
+                                    <span><i class="fa-regular fa-calendar"></i> Created: ${new Date(page.createdAt).toLocaleString()}</span>
+                                    <span><i class="fa-regular fa-clock"></i> Updated: ${new Date(page.updatedAt).toLocaleString()}</span>
+                                </div>
                             </div>
-                            <div class="flex gap-2">
+                            <div class="flex gap-2 flex-wrap">
                                 <button onclick="app.navigate('edit/${page.slug}')" 
                                     class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition font-bold text-sm">
-                                    <i class="fa-solid fa-pen"></i> تعديل
+                                    <i class="fa-solid fa-pen-to-square"></i> Edit
                                 </button>
                                 <button onclick="app.copyContent('${page.slug}')" 
                                     class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition font-bold text-sm">
-                                    <i class="fa-solid fa-copy"></i> نسخ
+                                    <i class="fa-solid fa-copy"></i> Copy Content
+                                </button>
+                                <button onclick="app.togglePublicAccess('${page.slug}')" 
+                                    class="${page.isPublic ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 hover:bg-gray-500'} text-white px-4 py-2 rounded-lg transition font-bold text-sm">
+                                    <i class="fa-solid fa-${page.isPublic ? 'globe' : 'lock'}"></i> 
+                                    ${page.isPublic ? 'Public' : 'Private'}
                                 </button>
                             </div>
                         </div>
                         <div class="p-6">
-                            <pre class="text-gray-700 font-mono text-sm bg-gray-50 p-4 rounded-lg leading-relaxed">${page.content}</pre>
+                            <pre class="text-gray-800 font-mono text-sm bg-gray-50 p-6 rounded-lg leading-relaxed border border-gray-200">${page.content}</pre>
                         </div>
+                    </div>
+                    
+                    <!-- Public JSON Access Card -->
+                    <div class="${page.isPublic ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'} border rounded-xl p-6">
+                        <div class="flex items-start justify-between flex-wrap gap-4">
+                            <div class="flex items-start gap-4">
+                                <div class="${page.isPublic ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-500'} p-3 rounded-full">
+                                    <i class="fa-solid fa-code text-xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-lg ${page.isPublic ? 'text-green-800' : 'text-gray-600'}">
+                                        JSON API Access
+                                    </h3>
+                                    <p class="text-sm ${page.isPublic ? 'text-green-700' : 'text-gray-500'} mt-1">
+                                        ${page.isPublic 
+                                            ? '✅ This page is publicly accessible via JSON API' 
+                                            : '🔒 Make this page public to get a JSON API endpoint'}
+                                    </p>
+                                    ${page.isPublic ? `
+                                    <div class="mt-3 bg-white rounded-lg p-3 border border-green-200">
+                                        <code class="text-xs text-green-800 break-all font-mono">${publicUrl}</code>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            ${page.isPublic ? `
+                            <button onclick="app.copyToClipboard('${publicUrl}')" 
+                                class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition font-bold text-sm">
+                                <i class="fa-solid fa-link"></i> Copy JSON URL
+                            </button>
+                            ` : ''}
+                        </div>
+                        ${page.isPublic ? `
+                        <div class="mt-4 bg-white rounded-lg p-4 border border-green-200">
+                            <p class="text-xs font-semibold text-gray-500 mb-2">Example usage (curl):</p>
+                            <pre class="text-xs bg-gray-900 text-green-400 p-3 rounded overflow-x-auto"><code>curl "${publicUrl}"</code></pre>
+                            <p class="text-xs font-semibold text-gray-500 mt-3 mb-2">Example usage (JavaScript fetch):</p>
+                            <pre class="text-xs bg-gray-900 text-green-400 p-3 rounded overflow-x-auto"><code>fetch("${publicUrl}")
+  .then(res => res.json())
+  .then(data => console.log(data));</code></pre>
+                        </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
         },
         
-        // نسخ محتوى الصفحة
+        // Toggle public access
+        togglePublicAccess(slug) {
+            const result = this.togglePublic(slug);
+            if (result.success) {
+                this.showToast(
+                    result.isPublic ? 'Page is now public! JSON API enabled' : 'Page is now private', 
+                    'success'
+                );
+                this.renderView(document.getElementById('app'), slug);
+            } else {
+                this.showToast(result.error, 'error');
+            }
+        },
+        
+        // Copy content to clipboard
         copyContent(slug) {
             const page = this.getPage(slug);
             if (page) {
                 navigator.clipboard.writeText(page.content).then(() => {
-                    this.showToast('تم نسخ المحتوى!', 'success');
+                    this.showToast('Content copied to clipboard!', 'success');
+                }).catch(() => {
+                    this.showToast('Failed to copy content', 'error');
                 });
             }
         },
         
-        // تعديل صفحة
+        // Copy to clipboard utility
+        copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                this.showToast('URL copied to clipboard!', 'success');
+            }).catch(() => {
+                prompt('Copy this URL:', text);
+            });
+        },
+        
+        // Edit Page
         renderEdit(container, slug) {
             if (!this.isUnlocked) {
                 this.navigate('login');
@@ -544,24 +718,24 @@
             }
             
             container.innerHTML = `
-                <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100">
+                <div class="max-w-3xl mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-100">
                     <h2 class="text-2xl font-bold mb-6 text-yellow-600 flex items-center gap-2">
-                        <i class="fa-solid fa-pen-to-square"></i> تعديل: 
-                        <span class="font-mono">${page.slug}</span>
+                        <i class="fa-solid fa-pen-to-square"></i> Edit Page: 
+                        <span class="font-mono text-gray-700">${page.slug}</span>
                     </h2>
                     <form id="editForm" class="space-y-5">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">المحتوى</label>
-                            <textarea id="editContent" required rows="12" 
-                                class="block w-full px-4 py-3 rounded-md border border-gray-300 font-mono text-sm">${page.content}</textarea>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Content</label>
+                            <textarea id="editContent" required rows="16" 
+                                class="block w-full px-4 py-3 rounded-md border border-gray-300 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 font-mono text-sm">${page.content}</textarea>
                         </div>
                         <div class="flex gap-3">
                             <button type="submit" class="flex-1 bg-yellow-500 text-white py-3 px-4 rounded-md hover:bg-yellow-600 transition font-bold shadow-md">
-                                <i class="fa-solid fa-save"></i> حفظ التعديلات
+                                <i class="fa-solid fa-check"></i> Save Changes
                             </button>
                             <button type="button" onclick="app.navigate('view/${slug}')" 
-                                class="px-6 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition text-gray-700 font-bold">
-                                إلغاء
+                                class="px-6 py-3 border-2 border-gray-300 rounded-md hover:bg-gray-50 transition text-gray-700 font-bold">
+                                Cancel
                             </button>
                         </div>
                     </form>
@@ -574,7 +748,18 @@
                 const result = this.updatePage(slug, content);
                 
                 if (result.success) {
-                    this.showToast('تم تحديث الصفحة بنجاح!', 'success');
+                    // Update public copy if page is public
+                    if (result.page.isPublic) {
+                        localStorage.setItem('public_' + slug, JSON.stringify({
+                            slug: slug,
+                            content: content,
+                            token: result.page.publicToken,
+                            created_at: result.page.createdAt,
+                            updated_at: result.page.updatedAt
+                        }));
+                    }
+                    
+                    this.showToast('Page updated successfully!', 'success');
                     this.navigate('view/' + slug);
                 } else {
                     this.showToast(result.error, 'error');
@@ -582,7 +767,7 @@
             });
         },
         
-        // لوحة التحكم
+        // Dashboard
         renderDashboard(container) {
             if (!this.isUnlocked) {
                 this.navigate('login');
@@ -593,57 +778,80 @@
             
             container.innerHTML = `
                 <div class="max-w-6xl mx-auto">
-                    <div class="flex justify-between items-center mb-6">
+                    <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
                         <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                            <i class="fa-solid fa-gauge-high text-indigo-600"></i> لوحة التحكم
+                            <i class="fa-solid fa-gauge-high text-indigo-600"></i> Dashboard
+                            <span class="text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                ${pages.length} page${pages.length !== 1 ? 's' : ''}
+                            </span>
                         </h2>
-                        <a href="#home" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition font-bold text-sm">
-                            <i class="fa-solid fa-plus"></i> صفحة جديدة
+                        <a href="#home" class="bg-indigo-600 text-white px-5 py-3 rounded-lg hover:bg-indigo-700 transition font-bold text-sm">
+                            <i class="fa-solid fa-plus"></i> New Page
                         </a>
                     </div>
                     
-                    <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+                    <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
                         ${pages.length === 0 ? `
-                            <div class="text-center py-12">
-                                <i class="fa-solid fa-file-circle-plus text-5xl text-gray-300 mb-4"></i>
-                                <p class="text-gray-500 mb-4">لا توجد صفحات بعد</p>
-                                <a href="#home" class="text-indigo-600 hover:underline font-bold">إنشاء أول صفحة</a>
+                            <div class="text-center py-16">
+                                <i class="fa-solid fa-file-circle-plus text-6xl text-gray-300 mb-4"></i>
+                                <h3 class="text-xl font-bold text-gray-600 mb-2">No Pages Yet</h3>
+                                <p class="text-gray-500 mb-6">Create your first encrypted page</p>
+                                <a href="#home" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition font-bold inline-block">
+                                    <i class="fa-solid fa-plus"></i> Create First Page
+                                </a>
                             </div>
                         ` : `
                             <div class="overflow-x-auto">
                                 <table class="w-full">
                                     <thead>
-                                        <tr class="bg-gray-50 border-b border-gray-200">
-                                            <th class="py-4 px-6 text-right text-sm font-bold text-gray-600">المعرف</th>
-                                            <th class="py-4 px-6 text-right text-sm font-bold text-gray-600">تاريخ الإنشاء</th>
-                                            <th class="py-4 px-6 text-right text-sm font-bold text-gray-600">آخر تحديث</th>
-                                            <th class="py-4 px-6 text-right text-sm font-bold text-gray-600">إجراءات</th>
+                                        <tr class="bg-gray-50 border-b-2 border-gray-200">
+                                            <th class="py-4 px-6 text-left text-sm font-bold text-gray-600">Slug</th>
+                                            <th class="py-4 px-6 text-left text-sm font-bold text-gray-600">Status</th>
+                                            <th class="py-4 px-6 text-left text-sm font-bold text-gray-600">Created</th>
+                                            <th class="py-4 px-6 text-left text-sm font-bold text-gray-600">Updated</th>
+                                            <th class="py-4 px-6 text-left text-sm font-bold text-gray-600">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-100">
-                                        ${pages.map(page => `
+                                        ${pages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(page => `
                                             <tr class="hover:bg-gray-50 transition">
                                                 <td class="py-4 px-6 font-mono text-sm text-indigo-600 font-bold">
-                                                    ${page.slug}
-                                                </td>
-                                                <td class="py-4 px-6 text-sm text-gray-600">
-                                                    ${new Date(page.createdAt).toLocaleDateString('ar-IQ')}
-                                                </td>
-                                                <td class="py-4 px-6 text-sm text-gray-600">
-                                                    ${new Date(page.updatedAt).toLocaleDateString('ar-IQ')}
+                                                    <i class="fa-solid fa-file-lock text-xs text-gray-400"></i> ${page.slug}
                                                 </td>
                                                 <td class="py-4 px-6">
-                                                    <div class="flex gap-2">
+                                                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
+                                                        page.isPublic 
+                                                            ? 'bg-green-100 text-green-700' 
+                                                            : 'bg-gray-100 text-gray-600'
+                                                    }">
+                                                        <i class="fa-solid fa-${page.isPublic ? 'globe' : 'lock'}"></i>
+                                                        ${page.isPublic ? 'Public' : 'Private'}
+                                                    </span>
+                                                </td>
+                                                <td class="py-4 px-6 text-sm text-gray-600">
+                                                    ${new Date(page.createdAt).toLocaleDateString()}
+                                                </td>
+                                                <td class="py-4 px-6 text-sm text-gray-600">
+                                                    ${new Date(page.updatedAt).toLocaleDateString()}
+                                                </td>
+                                                <td class="py-4 px-6">
+                                                    <div class="flex gap-1">
                                                         <button onclick="app.navigate('view/${page.slug}')" 
-                                                            class="text-blue-600 hover:bg-blue-50 p-2 rounded transition" title="عرض">
+                                                            class="text-blue-600 hover:bg-blue-50 p-2 rounded transition" title="View">
                                                             <i class="fa-solid fa-eye"></i>
                                                         </button>
                                                         <button onclick="app.navigate('edit/${page.slug}')" 
-                                                            class="text-yellow-600 hover:bg-yellow-50 p-2 rounded transition" title="تعديل">
+                                                            class="text-yellow-600 hover:bg-yellow-50 p-2 rounded transition" title="Edit">
                                                             <i class="fa-solid fa-pen"></i>
                                                         </button>
+                                                        ${page.isPublic ? `
+                                                        <button onclick="app.copyToClipboard('${this.getPublicUrl(page.slug)}')" 
+                                                            class="text-green-600 hover:bg-green-50 p-2 rounded transition" title="Copy JSON URL">
+                                                            <i class="fa-solid fa-link"></i>
+                                                        </button>
+                                                        ` : ''}
                                                         <button onclick="app.deletePageConfirm('${page.slug}')" 
-                                                            class="text-red-600 hover:bg-red-50 p-2 rounded transition" title="حذف">
+                                                            class="text-red-600 hover:bg-red-50 p-2 rounded transition" title="Delete">
                                                             <i class="fa-solid fa-trash"></i>
                                                         </button>
                                                     </div>
@@ -655,40 +863,48 @@
                             </div>
                         `}
                     </div>
+                    
+                    ${pages.length > 0 ? `
+                    <div class="mt-4 text-xs text-gray-400 text-center">
+                        <i class="fa-solid fa-shield-halved"></i> 
+                        All data is encrypted with AES-256. Public pages are accessible via JSON API.
+                    </div>
+                    ` : ''}
                 </div>
             `;
         },
         
-        // تأكيد حذف صفحة
+        // Confirm Delete
         deletePageConfirm(slug) {
-            if (confirm(`هل أنت متأكد من حذف صفحة "${slug}"؟ لا يمكن التراجع عن هذا الإجراء.`)) {
-                this.deletePage(slug);
-                this.showToast('تم حذف الصفحة بنجاح', 'success');
-                this.renderDashboard(document.getElementById('app'));
+            if (confirm(`Delete page "${slug}"?\n\nThis action cannot be undone!`)) {
+                if (confirm('Are you absolutely sure?')) {
+                    this.deletePage(slug);
+                    this.showToast('Page deleted successfully', 'success');
+                    this.renderDashboard(document.getElementById('app'));
+                }
             }
         },
         
         // ========================================
-        // التوجيه
+        // Routing
         // ========================================
         handleRouting() {
             const hash = window.location.hash || '#login';
             const main = document.getElementById('app');
             
-            // تحديث حالة القفل
+            // Update navigation UI
             this.updateNav();
             
-            // إعادة تحميل الصفحة بتأثير
+            // Reset and animate
             main.innerHTML = '';
             main.classList.remove('fade-in');
             void main.offsetWidth;
             main.classList.add('fade-in');
             
-            // توجيه حسب الـ hash
+            // Route
             if (hash === '#login') {
                 this.renderLogin(main);
             } else if (!this.isUnlocked) {
-                // أي صفحة أخرى تتطلب الفتح
                 this.navigate('login');
             } else if (hash === '#home') {
                 this.renderHome(main);
@@ -706,20 +922,80 @@
         },
         
         // ========================================
-        // بدء التطبيق
+        // API Handler (for external JSON access)
+        // ========================================
+        handleApiRequest() {
+            const params = new URLSearchParams(window.location.search);
+            
+            if (params.get('api') === 'json') {
+                const slug = params.get('slug');
+                
+                if (!slug) {
+                    this.outputJson({ error: 'Missing slug parameter' }, 400);
+                    return true;
+                }
+                
+                const publicData = this.getPublicPageData(slug);
+                
+                if (!publicData) {
+                    this.outputJson({ error: 'Page not found or not public' }, 404);
+                    return true;
+                }
+                
+                // Return public JSON data
+                this.outputJson({
+                    slug: publicData.slug,
+                    content: publicData.content,
+                    created_at: publicData.created_at,
+                    updated_at: publicData.updated_at,
+                    access_token: publicData.token
+                });
+                
+                return true;
+            }
+            
+            return false;
+        },
+        
+        // Output JSON response
+        outputJson(data, statusCode = 200) {
+            document.body.innerHTML = '';
+            document.head.innerHTML = '';
+            
+            const pre = document.createElement('pre');
+            pre.style.cssText = `
+                font-family: 'Courier New', monospace;
+                padding: 20px;
+                background: #1e1e1e;
+                color: #d4d4d4;
+                min-height: 100vh;
+                margin: 0;
+                font-size: 14px;
+                line-height: 1.6;
+            `;
+            pre.textContent = JSON.stringify(data, null, 2);
+            
+            document.body.appendChild(pre);
+        },
+        
+        // ========================================
+        // Initialize Application
         // ========================================
         init() {
-            // الاستماع لتغييرات الـ hash
+            // Check if this is an API request
+            if (this.handleApiRequest()) {
+                return; // Don't load the app UI for API requests
+            }
+            
+            // Listen for hash changes
             window.addEventListener('hashchange', () => this.handleRouting());
             
-            // التحقق من وجود كلمة مرور
+            // Check if password is set
             if (this.hasStoredPassword()) {
-                // توجيه إلى صفحة تسجيل الدخول
                 if (!window.location.hash || window.location.hash === '#') {
                     window.location.hash = '#login';
                 }
             } else {
-                // توجيه إلى إنشاء كلمة مرور
                 window.location.hash = '#login';
             }
             
@@ -727,7 +1003,7 @@
         }
     };
 
-    // تشغيل التطبيق عند تحميل الصفحة
+    // Start app when page loads
     document.addEventListener('DOMContentLoaded', () => {
         app.init();
     });
