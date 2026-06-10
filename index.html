@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JSON PasteBin - Easy Text Extraction</title>
+    <title>JSON PasteBin - Simple Text Extraction</title>
     
     <link href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.18/index.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -19,11 +19,6 @@
         textarea, input { background: #161b22 !important; color: #c9d1d9 !important; border-color: #30363d !important; }
         textarea:focus, input:focus { border-color: #58a6ff !important; outline: none; }
         .modal-backdrop { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
-        .paste-content {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-family: 'Courier New', monospace;
-        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -56,8 +51,7 @@
             <p class="text-gray-400 text-sm mb-4">This paste is protected. Enter the password to edit it.</p>
             <input type="password" id="modalPassword" 
                 class="w-full px-4 py-3 rounded-md mb-4" 
-                placeholder="Enter password..."
-                autocomplete="current-password">
+                placeholder="Enter password...">
             <div id="modalError" class="text-red-400 text-sm mb-4 hidden">
                 <i class="fa-solid fa-circle-xmark"></i> Incorrect password
             </div>
@@ -79,11 +73,10 @@
 
     <script>
     // ============================================
-    // JSON PASTEBIN - MODIFIED FOR EASY EXTRACTION
+    // SIMPLE PASTEBIN - FIXED FOR BEAUTIFULSOUP
     // ============================================
     
     const app = {
-        // Base64 encode/decode (supports Unicode)
         encode(str) {
             try { return btoa(unescape(encodeURIComponent(str))); } 
             catch(e) { return btoa(str); }
@@ -94,23 +87,19 @@
             catch(e) { return atob(str); }
         },
         
-        // SHA-256 hash for password
         async hashPassword(password) {
             const encoder = new TextEncoder();
             const data = encoder.encode(password);
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
             const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            return hashHex;
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         },
         
-        // Escape HTML to prevent XSS
         escapeHtml(text) {
             const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
             return text.replace(/[&<>"']/g, m => map[m]);
         },
         
-        // Show toast
         showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             const icon = document.getElementById('toast-icon');
@@ -122,21 +111,16 @@
             setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
         },
         
-        // Copy to clipboard
         copy(text) {
             navigator.clipboard.writeText(text).then(() => {
                 this.showToast('Copied!', 'success');
             }).catch(() => prompt('Copy:', text));
         },
         
-        // Get current base URL
         getBaseUrl() {
             return window.location.origin + window.location.pathname;
         },
         
-        // ========================================
-        // Password Modal
-        // ========================================
         showPasswordModal() {
             return new Promise((resolve) => {
                 const modal = document.getElementById('passwordModal');
@@ -184,9 +168,6 @@
             });
         },
         
-        // ========================================
-        // Create a paste
-        // ========================================
         async createPaste(slug, content, password = null) {
             const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
             const filtered = pastes.filter(p => p.slug !== slug);
@@ -208,9 +189,6 @@
             return paste;
         },
         
-        // ========================================
-        // Update existing paste
-        // ========================================
         async updatePaste(slug, content, passwordHash) {
             const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
             const pasteIndex = pastes.findIndex(p => p.slug === slug);
@@ -231,26 +209,6 @@
             return paste;
         },
         
-        getPasteContent(slug) {
-            const params = new URLSearchParams(window.location.search);
-            const urlData = params.get('data');
-            
-            if (urlData) {
-                try { return this.decode(urlData); } catch(e) { return null; }
-            }
-            
-            const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
-            const paste = pastes.find(p => p.slug === slug);
-            
-            if (paste) {
-                try { return this.decode(paste.encoded); } catch(e) { return null; }
-            }
-            return null;
-        },
-        
-        // ========================================
-        // Generate URLs
-        // ========================================
         getViewUrl(slug, content, passwordHash = null) {
             const encoded = this.encode(content);
             let url = `${this.getBaseUrl()}?view&slug=${slug}&data=${encodeURIComponent(encoded)}`;
@@ -270,9 +228,9 @@
             return `${this.getBaseUrl()}?api=raw&slug=${slug}&data=${encodeURIComponent(encoded)}`;
         },
         
-        // ========================================
-        // API Handler - MODIFIED FOR BEAUTIFULSOUP
-        // ========================================
+        // ============================================
+        // FIXED API HANDLER - SIMPLE AND CLEAN
+        // ============================================
         handleApi() {
             const params = new URLSearchParams(window.location.search);
             const api = params.get('api');
@@ -290,12 +248,11 @@
                     const response = { 
                         slug: slug, 
                         content: content, 
-                        timestamp: new Date().toISOString(),
-                        status: "success"
+                        timestamp: new Date().toISOString()
                     };
                     
                     const pre = document.createElement('pre');
-                    pre.style.cssText = 'font-family:monospace;padding:20px;background:#0d1117;color:#58a6ff;min-height:100vh;margin:0;font-size:14px;line-height:1.6;';
+                    pre.style.cssText = 'font-family:monospace;padding:20px;background:#0d1117;color:#58a6ff;min-height:100vh;margin:0;font-size:14px;';
                     pre.textContent = JSON.stringify(response, null, 2);
                     document.body.appendChild(pre);
                     return true;
@@ -305,119 +262,135 @@
                 }
             }
             
-            // Handle RAW API - MODIFIED: Returns HTML with clear classes for BeautifulSoup
+            // ============================================
+            // FIXED RAW API - RETURNS SIMPLE HTML WITH CLASSES
+            // ============================================
             if (api === 'raw' && slug && data) {
                 try {
                     const content = this.decode(decodeURIComponent(data));
                     
-                    // Return HTML page with clean structure for easy extraction
+                    // Clear everything
                     document.body.innerHTML = '';
                     document.head.innerHTML = '';
                     document.title = `${slug} - Raw Content`;
                     
-                    // Add meta tags for UTF-8
+                    // Add UTF-8 meta
                     const meta = document.createElement('meta');
                     meta.setAttribute('charset', 'UTF-8');
                     document.head.appendChild(meta);
                     
-                    // Create a clean HTML structure
-                    const container = document.createElement('div');
-                    container.className = 'min-h-screen flex flex-col items-center justify-center p-8 bg-gray-50 dark:bg-gray-900';
-                    container.style.cssText = 'min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;background:#f9fafb;';
+                    // Create a VERY simple HTML structure
+                    // This structure is guaranteed to work with BeautifulSoup
+                    const html = `
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <meta charset="UTF-8">
+                            <title>${slug} - Raw Content</title>
+                            <style>
+                                body {
+                                    margin: 0;
+                                    padding: 20px;
+                                    background: #f5f5f5;
+                                    font-family: monospace;
+                                }
+                                .paste-container {
+                                    max-width: 1200px;
+                                    margin: 0 auto;
+                                    background: white;
+                                    border: 1px solid #ddd;
+                                    border-radius: 8px;
+                                    padding: 20px;
+                                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                                }
+                                .paste-header {
+                                    border-bottom: 2px solid #e0e0e0;
+                                    padding-bottom: 10px;
+                                    margin-bottom: 20px;
+                                }
+                                .paste-slug {
+                                    font-size: 20px;
+                                    font-weight: bold;
+                                    color: #0366d6;
+                                }
+                                .paste-content {
+                                    background: #f8f8f8;
+                                    border: 1px solid #e0e0e0;
+                                    border-radius: 4px;
+                                    padding: 15px;
+                                    overflow-x: auto;
+                                }
+                                .paste-text {
+                                    font-family: 'Courier New', monospace;
+                                    font-size: 14px;
+                                    line-height: 1.6;
+                                    white-space: pre-wrap;
+                                    word-wrap: break-word;
+                                    margin: 0;
+                                    color: #333;
+                                }
+                                .paste-footer {
+                                    margin-top: 20px;
+                                    padding-top: 10px;
+                                    border-top: 1px solid #e0e0e0;
+                                    font-size: 12px;
+                                    color: #666;
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="paste-container">
+                                <div class="paste-header">
+                                    <div class="paste-slug">📄 /${this.escapeHtml(slug)}</div>
+                                </div>
+                                <div class="paste-content">
+                                    <pre class="paste-text">${this.escapeHtml(content)}</pre>
+                                </div>
+                                <div class="paste-footer">
+                                    Generated: ${new Date().toISOString()} | Raw Text API
+                                </div>
+                            </div>
+                        </body>
+                        </html>
+                    `;
                     
-                    // Card container
-                    const card = document.createElement('div');
-                    card.className = 'max-w-4xl w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6';
-                    card.style.cssText = 'max-width:64rem;width:100%;background:white;border-radius:0.5rem;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);padding:1.5rem;';
-                    
-                    // Header
-                    const header = document.createElement('div');
-                    header.className = 'border-b border-gray-200 dark:border-gray-700 pb-4 mb-4';
-                    header.style.cssText = 'border-bottom:1px solid #e5e7eb;padding-bottom:1rem;margin-bottom:1rem;';
-                    
-                    const title = document.createElement('h1');
-                    title.className = 'text-2xl font-bold text-gray-900 dark:text-white';
-                    title.textContent = `📄 Content: ${slug}`;
-                    header.appendChild(title);
-                    
-                    const slugInfo = document.createElement('p');
-                    slugInfo.className = 'text-sm text-gray-500 dark:text-gray-400 mt-1';
-                    slugInfo.textContent = `Slug: ${slug}`;
-                    header.appendChild(slugInfo);
-                    
-                    // Content area with clear class for BeautifulSoup
-                    const contentArea = document.createElement('div');
-                    contentArea.className = 'paste-content mt-6';
-                    contentArea.style.cssText = 'margin-top:1.5rem;';
-                    
-                    const contentLabel = document.createElement('div');
-                    contentLabel.className = 'text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2';
-                    contentLabel.textContent = 'Paste Content:';
-                    contentArea.appendChild(contentLabel);
-                    
-                    const contentBox = document.createElement('div');
-                    contentBox.className = 'bg-gray-100 dark:bg-gray-900 rounded-lg p-4 overflow-auto';
-                    contentBox.style.cssText = 'background:#f3f4f6;border-radius:0.5rem;padding:1rem;overflow:auto;';
-                    
-                    const contentPre = document.createElement('pre');
-                    contentPre.className = 'text-sm font-mono text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words';
-                    contentPre.style.cssText = 'font-size:0.875rem;font-family:monospace;color:#1f2937;white-space:pre-wrap;word-wrap:break-word;margin:0;';
-                    contentPre.textContent = content;
-                    contentBox.appendChild(contentPre);
-                    contentArea.appendChild(contentBox);
-                    
-                    // Footer
-                    const footer = document.createElement('div');
-                    footer.className = 'mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400';
-                    footer.style.cssText = 'margin-top:1.5rem;padding-top:1rem;border-top:1px solid #e5e7eb;font-size:0.75rem;color:#6b7280;';
-                    footer.textContent = `Generated: ${new Date().toISOString()} | API Endpoint`;
-                    
-                    card.appendChild(header);
-                    card.appendChild(contentArea);
-                    card.appendChild(footer);
-                    container.appendChild(card);
-                    document.body.appendChild(container);
-                    
+                    document.write(html);
+                    document.close();
                     return true;
+                    
                 } catch(e) {
-                    document.body.innerHTML = '<div class="error" style="color:red;padding:20px;">Error decoding data</div>';
+                    document.body.innerHTML = `<div style="color:red;padding:20px;">Error: ${e.message}</div>`;
                     return true;
                 }
             }
             return false;
         },
 
-        // ========================================
-        // Render API Info Helper
-        // ========================================
         renderApiInfo(container, jsonUrl, rawUrl) {
             container.innerHTML = `
                 <div class="bg-green-900/30 border border-green-700/50 text-green-400 text-xs p-3 rounded-lg mb-4">
                     <i class="fa-solid fa-circle-check"></i> 
-                    <strong>Ready!</strong> Use these URLs to access your content programmatically.
+                    <strong>Ready!</strong> Use these URLs to access your content.
                 </div>
+                
                 <div class="bg-[#0d1117] rounded-lg p-4 border border-[#30363d]">
-                    <p class="text-xs text-gray-400 mb-2 font-semibold">📦 JSON API Endpoint:</p>
+                    <p class="text-xs text-gray-400 mb-2 font-semibold">📦 JSON API:</p>
                     <div class="flex items-center gap-2">
-                        <code class="flex-1 text-xs text-green-400 break-all font-mono bg-[#161b22] p-2 rounded">${jsonUrl}</code>
-                        <button onclick="app.copy('${jsonUrl}')" class="text-gray-400 hover:text-white p-2" title="Copy">
-                            <i class="fa-solid fa-copy"></i>
-                        </button>
+                        <code class="flex-1 text-xs text-green-400 break-all bg-[#161b22] p-2 rounded">${jsonUrl}</code>
+                        <button onclick="app.copy('${jsonUrl}')" class="text-gray-400 hover:text-white p-2">📋</button>
                     </div>
                 </div>
                 
                 <div class="bg-[#0d1117] rounded-lg p-4 border border-[#30363d]">
-                    <p class="text-xs text-gray-400 mb-2 font-semibold">📄 Raw Content (HTML with classes):</p>
+                    <p class="text-xs text-gray-400 mb-2 font-semibold">📄 Raw Text API (for BeautifulSoup):</p>
                     <div class="flex items-center gap-2">
-                        <code class="flex-1 text-xs text-yellow-400 break-all font-mono bg-[#161b22] p-2 rounded">${rawUrl}</code>
-                        <button onclick="app.copy('${rawUrl}')" class="text-gray-400 hover:text-white p-2" title="Copy">
-                            <i class="fa-solid fa-copy"></i>
-                        </button>
+                        <code class="flex-1 text-xs text-yellow-400 break-all bg-[#161b22] p-2 rounded">${rawUrl}</code>
+                        <button onclick="app.copy('${rawUrl}')" class="text-gray-400 hover:text-white p-2">📋</button>
                     </div>
                 </div>
                 
                 <div class="bg-[#0d1117] rounded-lg p-4 border border-[#30363d]">
-                    <p class="text-xs text-gray-400 mb-3 font-semibold">💡 Python Example (BeautifulSoup):</p>
+                    <p class="text-xs text-gray-400 mb-3 font-semibold">🐍 Python Code (Working):</p>
                     <pre class="text-xs bg-[#161b22] text-green-400 p-3 rounded overflow-x-auto"><code>import requests
 from bs4 import BeautifulSoup
 
@@ -425,59 +398,42 @@ url = "${rawUrl}"
 r = requests.get(url)
 soup = BeautifulSoup(r.text, 'html.parser')
 
-# Find content by class
+# Method 1: Find by class
 content_div = soup.find('div', class_='paste-content')
 if content_div:
-    text = content_div.find('pre').text
-    print(text)</code></pre>
+    text = content_div.find('pre', class_='paste-text').text
+    print(text)
+
+# Method 2: Find by class directly
+text = soup.find('pre', class_='paste-text').text
+print(text)</code></pre>
                 </div>
             `;
         },
         
-        // ========================================
-        // Render: Home Page
-        // ========================================
         renderHome(container) {
             container.innerHTML = `
                 <div class="max-w-3xl mx-auto bg-[#161b22] p-8 rounded-xl border border-[#30363d]">
                     <h2 class="text-2xl font-bold mb-2 text-white">
                         <i class="fa-solid fa-file-circle-plus text-[#58a6ff]"></i> Create New Paste
                     </h2>
-                    <p class="text-gray-400 text-sm mb-6">
-                        Create a paste. Your content will be stored locally in your browser.
-                    </p>
-                    
                     <form id="createForm" class="space-y-5">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-300 mb-1">Slug (URL Name)</label>
-                            <div class="flex">
-                                <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-[#30363d] bg-[#0d1117] text-gray-400 text-sm font-mono">/</span>
-                                <input type="text" id="slug" required pattern="[a-zA-Z0-9_-]+" 
-                                    class="flex-1 block w-full px-4 py-3 rounded-r-md font-mono" 
-                                    placeholder="my-config-file">
-                            </div>
-                            <p class="text-xs text-gray-500 mt-1">Letters, numbers, hyphens, underscores (3-50 characters)</p>
+                            <label class="block text-sm font-semibold text-gray-300 mb-1">Slug</label>
+                            <input type="text" id="slug" required pattern="[a-zA-Z0-9_-]+" 
+                                class="w-full px-4 py-3 rounded-md font-mono" 
+                                placeholder="my-paste">
                         </div>
-                        
                         <div>
-                            <label class="block text-sm font-semibold text-gray-300 mb-1">
-                                <i class="fa-solid fa-lock text-[#58a6ff]"></i> Password (Optional)
-                            </label>
-                            <input type="password" id="password" 
-                                class="block w-full px-4 py-3 rounded-md" 
-                                placeholder="Leave empty for public paste">
-                            <p class="text-xs text-gray-500 mt-1">If set, you'll need this password to edit the paste later</p>
+                            <label class="block text-sm font-semibold text-gray-300 mb-1">Password (Optional)</label>
+                            <input type="password" id="password" class="w-full px-4 py-3 rounded-md">
                         </div>
-                        
                         <div>
                             <label class="block text-sm font-semibold text-gray-300 mb-1">Content</label>
-                            <textarea id="content" required rows="14" 
-                                class="block w-full px-4 py-3 rounded-md text-sm font-mono" 
-                                placeholder="Paste your content here..."></textarea>
+                            <textarea id="content" required rows="14" class="w-full px-4 py-3 rounded-md text-sm font-mono"></textarea>
                         </div>
-                        
-                        <button type="submit" class="w-full bg-[#238636] text-white py-3 px-4 rounded-md hover:bg-[#2ea043] transition font-bold text-lg flex justify-center items-center gap-2">
-                            <i class="fa-solid fa-paper-plane"></i> Create Paste
+                        <button type="submit" class="w-full bg-[#238636] text-white py-3 rounded-md hover:bg-[#2ea043] transition font-bold">
+                            Create Paste
                         </button>
                     </form>
                 </div>
@@ -494,41 +450,26 @@ if content_div:
                     return;
                 }
                 
-                const btn = e.target.querySelector('button[type="submit"]');
+                const btn = e.target.querySelector('button');
                 btn.innerHTML = '<div class="spinner"></div> Creating...';
                 btn.disabled = true;
 
                 await this.createPaste(slug, content, password);
-                
                 const viewUrl = this.getViewUrl(slug, content);
                 window.location.href = viewUrl;
             });
         },
         
-        // ========================================
-        // Render: Edit Paste
-        // ========================================
         renderEdit(container, slug, content, passwordHash) {
             container.innerHTML = `
                 <div class="max-w-3xl mx-auto bg-[#161b22] p-8 rounded-xl border border-[#30363d]">
-                    <h2 class="text-2xl font-bold mb-2 text-white">
-                        <i class="fa-solid fa-pen-to-square text-[#58a6ff]"></i> Edit Paste: /${slug}
-                    </h2>
-                    
+                    <h2 class="text-2xl font-bold mb-2 text-white">Edit: /${slug}</h2>
                     <form id="editForm" class="space-y-5">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-300 mb-1">Content</label>
-                            <textarea id="editContent" required rows="14" 
-                                class="block w-full px-4 py-3 rounded-md text-sm font-mono">${this.escapeHtml(content)}</textarea>
-                        </div>
-                        
+                        <textarea id="editContent" required rows="14" 
+                            class="w-full px-4 py-3 rounded-md text-sm font-mono">${this.escapeHtml(content)}</textarea>
                         <div class="flex gap-3">
-                            <button type="button" onclick="history.back()" class="flex-1 bg-[#30363d] text-white py-3 px-4 rounded-md hover:bg-[#30363d]/80 transition font-bold text-lg">
-                                Cancel
-                            </button>
-                            <button type="submit" class="flex-1 bg-[#238636] text-white py-3 px-4 rounded-md hover:bg-[#2ea043] transition font-bold text-lg">
-                                Save Changes
-                            </button>
+                            <button type="button" onclick="history.back()" class="flex-1 bg-[#30363d] text-white py-3 rounded-md">Cancel</button>
+                            <button type="submit" class="flex-1 bg-[#238636] text-white py-3 rounded-md">Save</button>
                         </div>
                     </form>
                 </div>
@@ -537,7 +478,6 @@ if content_div:
             document.getElementById('editForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const newContent = document.getElementById('editContent').value;
-                
                 const btn = e.target.querySelector('button[type="submit"]');
                 btn.innerHTML = '<div class="spinner"></div> Saving...';
                 btn.disabled = true;
@@ -546,12 +486,12 @@ if content_div:
                 
                 if (result && result.error) {
                     this.showToast(result.error, 'error');
-                    btn.innerHTML = 'Save Changes';
+                    btn.innerHTML = 'Save';
                     btn.disabled = false;
                     return;
                 }
                 
-                this.showToast('Paste updated successfully!', 'success');
+                this.showToast('Updated!', 'success');
                 setTimeout(() => {
                     const viewUrl = this.getViewUrl(slug, newContent);
                     window.location.href = viewUrl;
@@ -559,9 +499,6 @@ if content_div:
             });
         },
         
-        // ========================================
-        // Render: View Paste
-        // ========================================
         renderView(container) {
             const params = new URLSearchParams(window.location.search);
             const slug = params.get('slug');
@@ -569,12 +506,7 @@ if content_div:
             const urlPasswordHash = params.get('pw');
             
             if (!slug || !data) {
-                container.innerHTML = `
-                    <div class="max-w-2xl mx-auto text-center py-20">
-                        <i class="fa-solid fa-circle-question text-7xl text-gray-600 mb-4"></i>
-                        <h2 class="text-2xl text-gray-300">No paste specified</h2>
-                        <a href="${this.getBaseUrl()}" class="text-[#58a6ff] mt-4 inline-block font-bold">Create New</a>
-                    </div>`;
+                container.innerHTML = `<div class="text-center py-20"><a href="${this.getBaseUrl()}" class="text-[#58a6ff]">Create New</a></div>`;
                 return;
             }
             
@@ -582,134 +514,83 @@ if content_div:
             try {
                 content = this.decode(decodeURIComponent(data));
             } catch(e) {
-                container.innerHTML = `<div class="text-center py-20 text-red-400">Error: Invalid data</div>`;
+                container.innerHTML = `<div class="text-center py-20 text-red-400">Error</div>`;
                 return;
             }
             
             const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
             const localPaste = pastes.find(p => p.slug === slug);
             const storedPasswordHash = localPaste?.passwordHash;
-
             const jsonUrl = this.getJsonUrl(slug, content);
             const rawUrl = this.getRawUrl(slug, content);
-            
             const isProtected = !!storedPasswordHash;
             const hasValidPassword = urlPasswordHash && storedPasswordHash && urlPasswordHash === storedPasswordHash;
             
             container.innerHTML = `
                 <div class="max-w-4xl mx-auto">
                     <div class="bg-[#161b22] rounded-xl border border-[#30363d] mb-6">
-                        <div class="p-5 border-b border-[#30363d] flex justify-between items-center flex-wrap gap-3">
-                            <div>
-                                <h1 class="text-xl font-bold font-mono text-[#58a6ff]">/${slug}</h1>
-                                ${isProtected ? `<div class="flex items-center gap-2 mt-2"><i class="fa-solid fa-lock text-green-400 text-xs"></i><span class="text-xs text-green-400">Protected</span></div>` : ''}
-                            </div>
-                            <div class="flex gap-2 flex-wrap">
-                                <button id="editBtn" class="bg-[#f0883e] text-white px-4 py-2 rounded-lg hover:bg-[#f0883e]/80 transition font-bold text-sm">
-                                    <i class="fa-solid fa-pen-to-square"></i> Edit
-                                </button>
-                                <button onclick="app.copy('${jsonUrl}')" class="bg-[#1f6feb] text-white px-4 py-2 rounded-lg hover:bg-[#1f6feb]/80 transition font-bold text-sm">
-                                    <i class="fa-solid fa-code"></i> Copy JSON URL
-                                </button>
-                                <button onclick="app.copy('${rawUrl}')" class="bg-[#30363d] text-white px-4 py-2 rounded-lg hover:bg-[#30363d]/80 transition font-bold text-sm">
-                                    <i class="fa-solid fa-file-lines"></i> Copy Raw URL
-                                </button>
+                        <div class="p-5 border-b border-[#30363d] flex justify-between items-center">
+                            <h1 class="text-xl font-mono text-[#58a6ff]">/${slug}</h1>
+                            <div class="flex gap-2">
+                                <button id="editBtn" class="bg-[#f0883e] text-white px-4 py-2 rounded-lg text-sm">Edit</button>
+                                <button onclick="app.copy('${jsonUrl}')" class="bg-[#1f6feb] text-white px-4 py-2 rounded-lg text-sm">JSON</button>
+                                <button onclick="app.copy('${rawUrl}')" class="bg-[#30363d] text-white px-4 py-2 rounded-lg text-sm">Raw URL</button>
                             </div>
                         </div>
                         <div class="p-6">
-                            <pre class="text-sm bg-[#0d1117] p-5 rounded-lg leading-relaxed border border-[#30363d] overflow-x-auto text-gray-200 font-mono">${this.escapeHtml(content)}</pre>
+                            <pre class="text-sm bg-[#0d1117] p-5 rounded-lg overflow-x-auto">${this.escapeHtml(content)}</pre>
                         </div>
                     </div>
-                    
                     <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-6">
-                        <h3 class="font-bold text-lg text-white mb-4">
-                            <i class="fa-solid fa-plug text-[#58a6ff]"></i> API Access
-                        </h3>
-                        <div id="apiInfoContainer" class="space-y-4"></div>
+                        <h3 class="font-bold mb-4">API Access</h3>
+                        <div id="apiInfoContainer"></div>
                     </div>
                 </div>
             `;
-
-            const infoContainer = document.getElementById('apiInfoContainer');
-            this.renderApiInfo(infoContainer, jsonUrl, rawUrl);
-
+            
+            this.renderApiInfo(document.getElementById('apiInfoContainer'), jsonUrl, rawUrl);
+            
             document.getElementById('editBtn').addEventListener('click', async () => {
                 if (!isProtected) {
-                    this.renderEdit(document.getElementById('app'), slug, content, null);
+                    this.renderEdit(container, slug, content, null);
                     return;
                 }
-                
                 if (hasValidPassword) {
-                    this.renderEdit(document.getElementById('app'), slug, content, urlPasswordHash);
+                    this.renderEdit(container, slug, content, urlPasswordHash);
                     return;
                 }
-                
                 const password = await this.showPasswordModal();
                 if (!password) return;
-                
                 const inputHash = await this.hashPassword(password);
                 if (inputHash !== storedPasswordHash) {
-                    this.showToast('Incorrect password', 'error');
+                    this.showToast('Wrong password', 'error');
                     return;
                 }
-                
                 const editUrl = `${this.getBaseUrl()}?edit&slug=${slug}&data=${encodeURIComponent(this.encode(content))}&pw=${inputHash}`;
                 window.location.href = editUrl;
             });
         },
         
-        // ========================================
-        // Render: Dashboard
-        // ========================================
         renderDashboard(container) {
             const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
-            
             container.innerHTML = `
                 <div class="max-w-6xl mx-auto">
                     <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold text-white">My Pastes (${pastes.length})</h2>
-                        <a href="${this.getBaseUrl()}" class="bg-[#238636] text-white px-5 py-3 rounded-lg hover:bg-[#2ea043] transition font-bold text-sm">
-                            <i class="fa-solid fa-plus"></i> New Paste
-                        </a>
+                        <h2 class="text-2xl font-bold">My Pastes (${pastes.length})</h2>
+                        <a href="${this.getBaseUrl()}" class="bg-[#238636] text-white px-5 py-3 rounded-lg">New Paste</a>
                     </div>
-                    
                     <div class="bg-[#161b22] rounded-xl border border-[#30363d] overflow-hidden">
-                        ${pastes.length === 0 ? `
-                            <div class="text-center py-16">
-                                <i class="fa-solid fa-paste text-6xl text-gray-600 mb-4"></i>
-                                <h3 class="text-xl font-bold text-gray-400 mb-2">No Pastes Yet</h3>
-                                <a href="${this.getBaseUrl()}" class="bg-[#238636] text-white px-6 py-3 rounded-lg hover:bg-[#2ea043] transition font-bold inline-block">
-                                    Create Paste
-                                </a>
-                            </div>
-                        ` : `
+                        ${pastes.length === 0 ? '<div class="text-center py-16">No pastes yet</div>' : `
                             <table class="w-full">
-                                <thead>
-                                    <tr class="bg-[#0d1117] border-b border-[#30363d]">
-                                        <th class="py-4 px-6 text-left text-sm font-bold text-gray-400">Slug</th>
-                                        <th class="py-4 px-6 text-left text-sm font-bold text-gray-400">Created</th>
-                                        <th class="py-4 px-6 text-left text-sm font-bold text-gray-400">Protected</th>
-                                        <th class="py-4 px-6 text-left text-sm font-bold text-gray-400">Actions</th>
-                                    </tr>
+                                <thead class="bg-[#0d1117]">
+                                    <tr><th class="py-4 px-6 text-left">Slug</th><th class="py-4 px-6 text-left">Created</th><th class="py-4 px-6 text-left">Actions</th></tr>
                                 </thead>
                                 <tbody>
-                                    ${pastes.reverse().map(p => {
+                                    ${pastes.map(p => {
                                         let content;
                                         try { content = app.decode(p.encoded); } catch(e) { content = ''; }
                                         const viewUrl = app.getViewUrl(p.slug, content, p.passwordHash);
-                                        
-                                        return `
-                                        <tr class="border-b border-[#30363d] hover:bg-[#1c2128]">
-                                            <td class="py-4 px-6 font-mono text-sm text-[#58a6ff]">/${p.slug}</td>
-                                            <td class="py-4 px-6 text-sm text-gray-400">${new Date(p.created).toLocaleDateString()}</td>
-                                            <td class="py-4 px-6">${p.passwordHash ? '<i class="fa-solid fa-lock text-green-400"></i>' : '<i class="fa-solid fa-lock-open text-gray-500"></i>'}</td>
-                                            <td class="py-4 px-6">
-                                                <div class="flex gap-2">
-                                                    <a href="${viewUrl}" class="text-blue-400 hover:text-blue-300">View</a>
-                                                    <button onclick="app.deletePaste('${p.slug}')" class="text-red-400 hover:text-red-300">Delete</button>
-                                                </div>
-                                            </td>
-                                        </tr>`;
+                                        return `<tr class="border-t border-[#30363d]"><td class="py-4 px-6 font-mono">/${p.slug}</td><td class="py-4 px-6">${new Date(p.created).toLocaleDateString()}</td><td class="py-4 px-6"><a href="${viewUrl}" class="text-blue-400">View</a> <button onclick="app.deletePaste('${p.slug}')" class="text-red-400 ml-3">Delete</button></td></tr>`;
                                     }).join('')}
                                 </tbody>
                             </table>
@@ -720,7 +601,7 @@ if content_div:
         },
         
         deletePaste(slug) {
-            if (confirm(`Delete paste "/${slug}"?`)) {
+            if (confirm(`Delete ${slug}?`)) {
                 const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
                 const filtered = pastes.filter(p => p.slug !== slug);
                 localStorage.setItem('my_pastes', JSON.stringify(filtered));
@@ -729,9 +610,6 @@ if content_div:
             }
         },
         
-        // ========================================
-        // Router
-        // ========================================
         route() {
             const params = new URLSearchParams(window.location.search);
             const main = document.getElementById('app');
@@ -739,44 +617,26 @@ if content_div:
             if (this.handleApi()) return;
             
             main.innerHTML = '';
-            main.classList.remove('fade-in');
-            void main.offsetWidth;
-            main.classList.add('fade-in');
-            
-            const hash = window.location.hash;
             
             if (params.get('edit') !== null) {
                 const slug = params.get('slug');
                 const data = params.get('data');
                 const passwordHash = params.get('pw');
-                
-                if (!slug || !data) {
-                    this.renderHome(main);
-                    return;
-                }
-                
-                let content;
-                try { content = this.decode(decodeURIComponent(data)); } catch(e) { content = null; }
-                
-                if (!content) {
-                    main.innerHTML = '<div class="text-center py-20 text-red-400">Error: Invalid data</div>';
-                    return;
-                }
-                
-                const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
-                const localPaste = pastes.find(p => p.slug === slug);
-                
-                if (localPaste?.passwordHash) {
-                    if (!passwordHash || passwordHash !== localPaste.passwordHash) {
-                        main.innerHTML = `<div class="text-center py-20"><i class="fa-solid fa-lock text-7xl text-red-400 mb-4"></i><h2 class="text-2xl">Password Required</h2><a href="${this.getBaseUrl()}?view&slug=${slug}&data=${data}" class="text-[#58a6ff]">Back</a></div>`;
-                        return;
-                    }
-                }
-                
-                this.renderEdit(main, slug, content, passwordHash);
+                if (slug && data) {
+                    try {
+                        const content = this.decode(decodeURIComponent(data));
+                        const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
+                        const localPaste = pastes.find(p => p.slug === slug);
+                        if (localPaste?.passwordHash && (!passwordHash || passwordHash !== localPaste.passwordHash)) {
+                            main.innerHTML = `<div class="text-center py-20">Password required</div>`;
+                            return;
+                        }
+                        this.renderEdit(main, slug, content, passwordHash);
+                    } catch(e) { this.renderHome(main); }
+                } else { this.renderHome(main); }
             } else if (params.get('view') !== null) {
                 this.renderView(main);
-            } else if (hash === '#dashboard') {
+            } else if (window.location.hash === '#dashboard') {
                 this.renderDashboard(main);
             } else {
                 this.renderHome(main);
