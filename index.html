@@ -75,15 +75,10 @@
     </div>
 
     <script>
-    // ============================================
-    // PASTEBIN - PUBLIC JSONBin.io Storage
-    // ============================================
-    
     const YOUR_API_KEY = '$2a$10$9eJHjKaI3n.wv2RMQ8ggeeAINlSZyFLtGkk76kmh0kSq/mlbkpTDm';
     
     const app = {
         jsonbinApiKey: YOUR_API_KEY,
-        jsonbinBinId: '',
         
         encode(str) {
             try { return btoa(unescape(encodeURIComponent(str))); } 
@@ -132,8 +127,6 @@
         
         async createPublicJsonBin(data) {
             try {
-                console.log('Creating PUBLIC bin with data:', data);
-                
                 const response = await fetch('https://api.jsonbin.io/v3/b', {
                     method: 'POST',
                     headers: {
@@ -151,10 +144,8 @@
                 }
                 
                 const result = await response.json();
-                console.log('✅ Public bin created:', result);
                 
                 if (result.metadata && result.metadata.private === true) {
-                    console.warn('⚠️ Bin was created as private! Forcing it to be public...');
                     await this.makeBinPublic(result.metadata.id);
                 }
                 
@@ -182,16 +173,8 @@
                     },
                     body: '{}'
                 });
-                
-                if (response.ok) {
-                    console.log('✅ Bin is now public!');
-                    return true;
-                } else {
-                    console.error('Failed to make bin public:', await response.text());
-                    return false;
-                }
+                return response.ok;
             } catch (error) {
-                console.error('Make public error:', error);
                 return false;
             }
         },
@@ -200,7 +183,6 @@
             const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
             const filtered = pastes.filter(p => p.slug !== slug);
             
-            // ✅ Password is now REQUIRED
             const passwordHash = await this.hashPassword(password);
             
             const pasteData = {
@@ -220,8 +202,6 @@
                 jsonbinUrl = binResult.url;
                 jsonbinId = binResult.id;
                 this.showToast('✅ Saved as PUBLIC bin!', 'success');
-            } else {
-                this.showToast('⚠️ Failed to create public bin, saving locally only', 'error');
             }
             
             const paste = {
@@ -247,7 +227,6 @@
             
             const paste = pastes[pasteIndex];
             
-            // ✅ Always verify password
             if (paste.passwordHash && paste.passwordHash !== passwordHash) {
                 return { error: 'Invalid password' };
             }
@@ -264,7 +243,7 @@
                 };
                 
                 try {
-                    const response = await fetch(`https://api.jsonbin.io/v3/b/${paste.jsonbinId}`, {
+                    await fetch(`https://api.jsonbin.io/v3/b/${paste.jsonbinId}`, {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json',
@@ -273,10 +252,7 @@
                         },
                         body: JSON.stringify(updateData)
                     });
-                    
-                    if (response.ok) {
-                        this.showToast('Updated on JSONBin.io', 'success');
-                    }
+                    this.showToast('Updated on JSONBin.io', 'success');
                 } catch (error) {
                     console.error('Update error:', error);
                 }
@@ -285,30 +261,6 @@
             pastes[pasteIndex] = paste;
             localStorage.setItem('my_pastes', JSON.stringify(pastes));
             return paste;
-        },
-        
-        async getPasteContent(slug) {
-            const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
-            const paste = pastes.find(p => p.slug === slug);
-            
-            if (paste && paste.jsonbinId) {
-                try {
-                    const response = await fetch(`https://api.jsonbin.io/v3/b/${paste.jsonbinId}/latest`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.record && data.record.content) {
-                            return data.record.content;
-                        }
-                    }
-                } catch (e) {
-                    console.error('Failed to fetch from public bin:', e);
-                }
-            }
-            
-            if (paste) {
-                try { return this.decode(paste.encoded); } catch(e) { return null; }
-            }
-            return null;
         },
         
         getViewUrl(slug, content, passwordHash = null) {
@@ -421,7 +373,6 @@
             const params = new URLSearchParams(window.location.search);
             const slug = params.get('slug');
             const data = params.get('data');
-            const urlPasswordHash = params.get('pw');
             
             if (!slug || !data) {
                 container.innerHTML = `<div class="max-w-2xl mx-auto text-center py-20">...</div>`;
@@ -440,7 +391,6 @@
             const localPaste = pastes.find(p => p.slug === slug);
             const realJsonUrl = localPaste?.jsonbinUrl || this.getJsonUrl(slug, content);
             const rawUrl = this.getRawUrl(slug, content);
-            const storedPasswordHash = localPaste?.passwordHash;
             
             container.innerHTML = `
                 <div class="max-w-4xl mx-auto">
@@ -483,17 +433,46 @@
             const infoContainer = document.getElementById('apiInfoContainer');
             this.renderApiInfo(infoContainer, realJsonUrl, rawUrl, true, localPaste?.jsonbinId);
 
-            // ✅ Always require password for editing
+            // ✅ ALWAYS require password for editing
             document.getElementById('editBtn').addEventListener('click', async () => {
+                console.log('Edit button clicked, showing password modal...');
+                
                 const password = await this.showPasswordModal();
-                if (!password) return;
+                if (!password) {
+                    console.log('No password entered, canceling edit');
+                    return;
+                }
                 
                 const inputHash = await this.hashPassword(password);
+                const storedPasswordHash = localPaste?.passwordHash;
+                
+                console.log('Input hash:', inputHash);
+                console.log('Stored hash:', storedPasswordHash);
+                
+                // ✅ If no stored hash (old paste), save the new password
+                if (!storedPasswordHash) {
+                    console.log('No stored password hash, saving new password...');
+                    const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
+                    const pasteIndex = pastes.findIndex(p => p.slug === slug);
+                    if (pasteIndex !== -1) {
+                        pastes[pasteIndex].passwordHash = inputHash;
+                        localStorage.setItem('my_pastes', JSON.stringify(pastes));
+                        console.log('✅ New password saved!');
+                    }
+                    
+                    const editUrl = `${this.getBaseUrl()}?edit&slug=${slug}&data=${encodeURIComponent(this.encode(content))}&pw=${inputHash}`;
+                    window.location.href = editUrl;
+                    return;
+                }
+                
+                // ✅ Verify password
                 if (inputHash !== storedPasswordHash) {
+                    console.log('❌ Incorrect password');
                     this.showToast('Incorrect password', 'error');
                     return;
                 }
                 
+                console.log('✅ Password correct, proceeding to edit');
                 const editUrl = `${this.getBaseUrl()}?edit&slug=${slug}&data=${encodeURIComponent(this.encode(content))}&pw=${inputHash}`;
                 window.location.href = editUrl;
             });
@@ -743,8 +722,7 @@
         },
         
         init() {
-            console.log('✅ App initialized with PUBLIC bin support');
-            console.log('API Key configured:', this.jsonbinApiKey ? 'Yes' : 'No');
+            console.log('✅ App initialized');
             this.route();
             window.addEventListener('hashchange', () => this.route());
         }
