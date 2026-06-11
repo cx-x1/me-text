@@ -50,7 +50,7 @@
             <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
                 <i class="fa-solid fa-lock text-[#58a6ff]"></i> Password Required
             </h3>
-            <p class="text-gray-400 text-sm mb-4">This paste is protected. Enter the password to edit it.</p>
+            <p class="text-gray-400 text-sm mb-4">Enter the password to edit this paste.</p>
             <input type="password" id="modalPassword" 
                 class="w-full px-4 py-3 rounded-md mb-4" 
                 placeholder="Enter password..."
@@ -79,7 +79,6 @@
     // PASTEBIN - PUBLIC JSONBin.io Storage
     // ============================================
     
-    // YOUR API KEY (pre-configured)
     const YOUR_API_KEY = '$2a$10$9eJHjKaI3n.wv2RMQ8ggeeAINlSZyFLtGkk76kmh0kSq/mlbkpTDm';
     
     const app = {
@@ -131,9 +130,6 @@
             return window.location.origin + window.location.pathname;
         },
         
-        // ========================================
-        // ✅ Create PUBLIC Bin on JSONBin.io (FIXED!)
-        // ========================================
         async createPublicJsonBin(data) {
             try {
                 console.log('Creating PUBLIC bin with data:', data);
@@ -143,10 +139,10 @@
                     headers: {
                         'Content-Type': 'application/json',
                         'X-Master-Key': this.jsonbinApiKey,
-                        'X-Bin-Private': 'false',  // ✅ THIS IS THE KEY FIX!
+                        'X-Bin-Private': 'false',
                         'X-Bin-Name': `PasteBin-${data.slug || 'paste'}`
                     },
-                    body: JSON.stringify(data)  // ✅ Just data, no "private" property
+                    body: JSON.stringify(data)
                 });
                 
                 if (!response.ok) {
@@ -157,13 +153,11 @@
                 const result = await response.json();
                 console.log('✅ Public bin created:', result);
                 
-                // Verify it's actually public
                 if (result.metadata && result.metadata.private === true) {
                     console.warn('⚠️ Bin was created as private! Forcing it to be public...');
                     await this.makeBinPublic(result.metadata.id);
                 }
                 
-                // Public URL (no API key needed!)
                 const publicUrl = `https://api.jsonbin.io/v3/b/${result.metadata.id}/latest`;
                 
                 return {
@@ -178,9 +172,6 @@
             }
         },
         
-        // ========================================
-        // ✅ Force make bin public (backup method)
-        // ========================================
         async makeBinPublic(binId) {
             try {
                 const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}/meta/privacy`, {
@@ -205,17 +196,12 @@
             }
         },
         
-        // ========================================
-        // Create a paste with PUBLIC Bin
-        // ========================================
-        async createPaste(slug, content, password = null) {
+        async createPaste(slug, content, password) {
             const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
             const filtered = pastes.filter(p => p.slug !== slug);
             
-            let passwordHash = null;
-            if (password) {
-                passwordHash = await this.hashPassword(password);
-            }
+            // ✅ Password is now REQUIRED
+            const passwordHash = await this.hashPassword(password);
             
             const pasteData = {
                 slug: slug,
@@ -227,14 +213,13 @@
             let jsonbinUrl = null;
             let jsonbinId = null;
             
-            // Save to JSONBin.io as PUBLIC bin
             this.showToast('Creating public bin on JSONBin.io...', 'info');
             const binResult = await this.createPublicJsonBin(pasteData);
             
             if (binResult) {
                 jsonbinUrl = binResult.url;
                 jsonbinId = binResult.id;
-                this.showToast('✅ Saved as PUBLIC bin! Anyone can access it directly.', 'success');
+                this.showToast('✅ Saved as PUBLIC bin!', 'success');
             } else {
                 this.showToast('⚠️ Failed to create public bin, saving locally only', 'error');
             }
@@ -254,9 +239,6 @@
             return paste;
         },
         
-        // ========================================
-        // Update existing paste
-        // ========================================
         async updatePaste(slug, content, passwordHash) {
             const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
             const pasteIndex = pastes.findIndex(p => p.slug === slug);
@@ -265,6 +247,7 @@
             
             const paste = pastes[pasteIndex];
             
+            // ✅ Always verify password
             if (paste.passwordHash && paste.passwordHash !== passwordHash) {
                 return { error: 'Invalid password' };
             }
@@ -272,7 +255,6 @@
             paste.encoded = this.encode(content);
             paste.updated = new Date().toISOString();
             
-            // Update JSONBin.io if exists
             if (paste.jsonbinId) {
                 const updateData = {
                     slug: slug,
@@ -305,16 +287,12 @@
             return paste;
         },
         
-        // ========================================
-        // Get paste content
-        // ========================================
         async getPasteContent(slug) {
             const pastes = JSON.parse(localStorage.getItem('my_pastes') || '[]');
             const paste = pastes.find(p => p.slug === slug);
             
             if (paste && paste.jsonbinId) {
                 try {
-                    // Public bin - no API key needed!
                     const response = await fetch(`https://api.jsonbin.io/v3/b/${paste.jsonbinId}/latest`);
                     if (response.ok) {
                         const data = await response.json();
@@ -333,9 +311,6 @@
             return null;
         },
         
-        // ========================================
-        // Generate URLs
-        // ========================================
         getViewUrl(slug, content, passwordHash = null) {
             const encoded = this.encode(content);
             let url = `${this.getBaseUrl()}?view&slug=${slug}&data=${encodeURIComponent(encoded)}`;
@@ -356,9 +331,6 @@
             return `${this.getBaseUrl()}?api=raw&slug=${slug}&data=${encodeURIComponent(encoded)}`;
         },
         
-        // ========================================
-        // API Handler
-        // ========================================
         handleApi() {
             const params = new URLSearchParams(window.location.search);
             const api = params.get('api');
@@ -409,7 +381,6 @@
                 <div class="bg-green-900/30 border border-green-700/50 text-green-400 text-xs p-3 rounded-lg mb-4">
                     <i class="fa-solid fa-globe"></i> 
                     <strong>🌍 PUBLIC Bin!</strong> Anyone can access this JSON URL directly without any API key.
-                    <br><small>Share this link with anyone - it works immediately!</small>
                 </div>
             ` : '';
 
@@ -446,9 +417,6 @@
             `;
         },
         
-        // ========================================
-        // Render: View Paste (Public)
-        // ========================================
         async renderView(container) {
             const params = new URLSearchParams(window.location.search);
             const slug = params.get('slug');
@@ -473,10 +441,6 @@
             const realJsonUrl = localPaste?.jsonbinUrl || this.getJsonUrl(slug, content);
             const rawUrl = this.getRawUrl(slug, content);
             const storedPasswordHash = localPaste?.passwordHash;
-            const isPublic = true;
-            
-            const isProtected = !!storedPasswordHash;
-            const hasValidPassword = urlPasswordHash && storedPasswordHash && urlPasswordHash === storedPasswordHash;
             
             container.innerHTML = `
                 <div class="max-w-4xl mx-auto">
@@ -490,7 +454,7 @@
                                     <span class="text-xs bg-green-900 text-green-400 px-2 py-1 rounded-full">
                                         <i class="fa-solid fa-globe"></i> Public Bin
                                     </span>
-                                    ${isProtected ? `<span class="text-xs text-yellow-400"><i class="fa-solid fa-lock"></i> Password Protected</span>` : ''}
+                                    <span class="text-xs text-yellow-400"><i class="fa-solid fa-lock"></i> Password Protected</span>
                                 </div>
                             </div>
                             <div class="flex gap-2 flex-wrap">
@@ -519,17 +483,8 @@
             const infoContainer = document.getElementById('apiInfoContainer');
             this.renderApiInfo(infoContainer, realJsonUrl, rawUrl, true, localPaste?.jsonbinId);
 
+            // ✅ Always require password for editing
             document.getElementById('editBtn').addEventListener('click', async () => {
-                if (!isProtected) {
-                    this.renderEdit(document.getElementById('app'), slug, content, null);
-                    return;
-                }
-                
-                if (hasValidPassword) {
-                    this.renderEdit(document.getElementById('app'), slug, content, urlPasswordHash);
-                    return;
-                }
-                
                 const password = await this.showPasswordModal();
                 if (!password) return;
                 
@@ -544,9 +499,6 @@
             });
         },
         
-        // ========================================
-        // Render: Home Page
-        // ========================================
         renderHome(container) {
             container.innerHTML = `
                 <div class="max-w-3xl mx-auto bg-[#161b22] p-8 rounded-xl border border-[#30363d]">
@@ -555,7 +507,7 @@
                             <i class="fa-solid fa-globe text-green-400 text-2xl"></i>
                             <div>
                                 <p class="text-green-400 font-bold">✅ Public Bins Enabled!</p>
-                                <p class="text-gray-400 text-sm">All pastes will be created as PUBLIC bins. Anyone can access the JSON URL directly.</p>
+                                <p class="text-gray-400 text-sm">All pastes will be created as PUBLIC bins with password protection.</p>
                             </div>
                         </div>
                     </div>
@@ -577,11 +529,13 @@
                         
                         <div>
                             <label class="block text-sm font-semibold text-gray-300 mb-1">
-                                <i class="fa-solid fa-lock text-[#58a6ff]"></i> Password (Optional)
+                                <i class="fa-solid fa-lock text-[#58a6ff]"></i> Password <span class="text-red-400">*</span>
                             </label>
-                            <input type="password" id="password" 
+                            <input type="password" id="password" required
                                 class="block w-full px-4 py-3 rounded-md" 
-                                placeholder="Leave empty for public paste">
+                                placeholder="Enter password to protect your paste"
+                                minlength="4">
+                            <p class="text-xs text-gray-500 mt-1">Required to edit this paste later</p>
                         </div>
                         
                         <div>
@@ -606,6 +560,11 @@
                 
                 if (!/^[a-zA-Z0-9_-]{3,50}$/.test(slug)) {
                     this.showToast('Invalid slug', 'error');
+                    return;
+                }
+                
+                if (!password || password.length < 4) {
+                    this.showToast('Password must be at least 4 characters', 'error');
                     return;
                 }
                 
